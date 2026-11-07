@@ -1,0 +1,19 @@
+{
+  "obsidian": 1,
+  "id": "author.modname",
+  "version": "0.1.0",
+  "name": { "en": "Mod Name" },
+  "description": { "en": "One or two sentences: what the mod changes, and whether other players notice." },
+  "authors": ["Author Name"],
+  "scope": "session",
+  "entry": "main.lua",
+  "source": "https://github.com/author/HD1-ModName",
+  "modules": ["src/feature.lua"],
+  "requires": ["obsidian.api"],
+  "options": [
+    { "id": "enabled", "type": "toggle", "default": true,
+      "label": { "en": "Enable the feature" },
+      "description": { "en": "Turns the feature on or off." } }
+  ],
+  "loader_api": 1
+}
