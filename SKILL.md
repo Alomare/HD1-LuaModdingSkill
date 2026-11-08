@@ -17,6 +17,10 @@ Read only what the task needs.
 | `references/engine.md` | Finding what to hook in the game scripts, components, master and slave, network limits, crashes |
 | `references/multiplayer.md` | Anything other players must see, share or agree on; session mods |
 | `references/stratagems.md` | Stratagems: new ones, loadouts, cooldowns, payloads, icons, the HUD list |
+| `references/ui.md` | HUD additions, redrawn menus, images and fonts a mod ships, drawing in the 3D world, mouse and keys |
+| `references/rendering.md` | Graphics: shading values, renderer settings, the render config, shaders, textures, lights |
+| `references/game-modes.md` | A mode apart from the campaign: expansions, mission seeds, map generation, keeping the campaign untouched, pausing |
+| `references/live-testing.md` | Scripted runs in the game: protecting the save, a command-driven test mod, probes, checklists for a tester |
 | `references/orchestration.md` | A large mod where splitting the work across several agents or models pays off |
 | `assets/mod-template/` | Starting a new mod: copy it and rename |
 | Obsidian API `REFERENCE.md` (github.com/Alomare/ObsidianAPI) | Before writing any hook: search it for the area first. It is long; search, don't read it whole |
@@ -33,7 +37,7 @@ Read only what the task needs.
 
 5. **Write testable code.** Put decisions in pure functions (which slot, which code, when to sync) and keep the hooks thin. Test the pure parts offline with LuaJIT 2.0 and fakes of the game tables. Run the API's suite too when the API changed.
 
-6. **Deploy and hand over to an in-game test.** Offline tests can't settle network timing, HUD drawing or engine behaviour. Deploy to the player's library, then give the tester a short list of what to look at, most likely failures first. Local co-op (a second controller) tests most multiplayer paths on one machine.
+6. **Deploy and hand over to an in-game test.** Offline tests can't settle network timing, HUD drawing or engine behaviour. Deploy to the player's library, then give the tester a short list of what to look at, most likely failures first. Local co-op (a second controller) tests most multiplayer paths on one machine. For scripted runs and probes, see `references/live-testing.md`.
 
 7. **Release.** Bump the version, add the CHANGELOG section, tag `v<version>`; the release workflow builds the zip. When a mod needs a new API, release the API first and gate the mod on that version.
 
@@ -44,6 +48,9 @@ Read only what the task needs.
 - Session hooks stop in a lobby that isn't cleared. Global tables a mod replaces directly keep their changes there, so undo them in `obsidian.on_session`.
 - A Lua error inside a game update freezes the game. Guard hooks that run every frame.
 - Hiding something from a menu has three parts: the list the screen draws, the default data the game falls back to, and the player's saved data. Missing one leaves the item reachable.
+- Spawning a unit whose package isn't loaded stops the game, and the engine can't be asked first. Spawn only units known to be loaded where the code runs.
+- A menu's `update` holds input, network sync and save writes. To restyle a screen, stop only the drawing.
+- Lobby data outlives the mission. Name the mission and run in every shared value.
 - Keep the game's own behaviour as the default and make the change opt-out only when the request says so; players notice lost upgrades and reset loadouts first.
 
 ## Writing for players

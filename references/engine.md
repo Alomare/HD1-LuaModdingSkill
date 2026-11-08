@@ -328,6 +328,10 @@ Crashes and freezes:
 - **A status command on a non-owned unit** can error, because `filter_slave_command` reads an undefined global. Use a zero-damage hit, which is the path weapons use.
 - **Camera particles** may be loaded only for their own biome. Spawning an unloaded particle can crash **(inferred)**.
 - Fortify objectives call `time_keeper:set_paused` without a check. A fortify mission started with no proving-grounds seed can crash **(inferred)**.
+- **`Window.set_cursor()` with no argument** reads through a null pointer inside the executable and crashes past any `pcall`. `Window.set_cursor("")` falls back to the system arrow.
+- **Temp tables of paused components.** A paused component keeps queued commands whose data sits in `TempTableFactory` tables the game takes back at the end of the frame. Copy them before holding a command across frames (Obsidian API 1.5.1 does this for `freeze`).
+- **A current planet with no region** stops the ship, modded or not. `available_planets` holds raw planets without regions; the planet screen builds the real ones in `setup_planets`.
+- The engine has no `Application.can_get`: a mod can't ask whether a unit's package is loaded before spawning it.
 
 Silent failures and wrong results:
 
@@ -337,6 +341,10 @@ Silent failures and wrong results:
 - **Strict globals.** A bare read of a global that does not exist raises an error.
 - **Perk swaps** skip the old perk's `remove_master` and `remove_slave`, so old effects stay on **(inferred from reading)**.
 - **Shared state edited on one peer** desyncs or gets overwritten when ownership migrates.
+- **`type()` of a game vector is `"vector3"`**, not `"userdata"`. Recognise a position by the fields it carries.
+- **`_G.TIME_SCALE` doesn't slow the game.** It scales `GAME_DT` for the scripts; engine animation and movement keep their pace. Pause through Obsidian API `world.time_scale` instead.
+- **Explosion hits arrive later.** An explosion sends the hits from a physics overlap that the engine answers on a later step, after the call returned (`SpawnManager` waits the same way: `waiting_for_overlap`). Filter hits where the answer lands.
+- **Weapon hit tests keep their settings.** A weapon's state points at settings shared by the weapon type, and the raycast keeps the settings it was made with. A private copy needs `remake_raycast` (`api.gear.tune` does it).
 
 Save and backend:
 
@@ -344,5 +352,13 @@ Save and backend:
 - Queues live in the save. A mission finished with a session mod, followed by a crash or an offline exit before the next menu tick, can leave results in the save, and the next run without session mods uploads them.
 - A test harness should skip every save call and run as a session mod, so Obsidian holds back Galactic War and leaderboard uploads.
 - Paid content stays paid. Items go through the DLC check (`lua/settings/dlc_settings.lua`).
+
+Galactic War backend, for mods that touch the campaign (from reading `CampaignManager` and a probe against a local stub server):
+
+- The server sends war points, front statuses, defend and attack events, statistics and Proving Grounds seeds. Planets, missions, environments and rewards are rolled on the client from the region (`generate_planets`), and hosts send them to peers. A mod changes those on every machine, not on a server.
+- The lobby browser filters rooms by `campaign_season` equal to the player's season.
+- A defend event moves the front's planets to the event region, and mission end reports a planet only when that region matches the points' region. During an event, normal missions on that front report no planet.
+- `campaign_cache` lives in the save, so anything that switches wars or seasons should also switch the save (`SaveManager.setup` can be pointed at another save name).
+- Write no mod that sends results to the official server outside the game's own flow, and never redirect the game's backend for other players.
 
 Scope reminder: a mod that only reads game tables and draws locally can be a client mod and works with players who do not have it. A mod that changes shared game state must be a session mod, and only runs while everyone in the lobby has agreed (Obsidian's scopes documentation has the rules).

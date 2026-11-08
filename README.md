@@ -2,7 +2,7 @@
 
 Instructions and reference for AI coding agents that build Lua mods for HELLDIVERS (2015) with [Obsidian Mod Manager](https://github.com/Alomare/ObsidianModManager) and the [Obsidian API](https://github.com/Alomare/ObsidianAPI). It works with Claude Code and with any agent that can read Markdown files: Codex, Cursor, Gemini CLI, Copilot, Aider and others.
 
-It covers the mod package and manifest, the game's own scripts and what to hook, multiplayer and session mods, stratagems, testing and releasing. Most of it comes from building and shipping real mods, such as [Remixed Stratagems](https://github.com/Alomare/HD1-RemixedStratagems) and [Shared Resupply](https://github.com/Alomare/HD1-SharedResupply).
+It covers the mod package and manifest, the game's own scripts and what to hook, multiplayer and session mods, stratagems, HUD and menu drawing, graphics and textures, game modes, testing and releasing. Most of it comes from building and shipping real mods, such as [Remixed Stratagems](https://github.com/Alomare/HD1-RemixedStratagems) and [Shared Resupply](https://github.com/Alomare/HD1-SharedResupply).
 
 ## Contents
 
@@ -13,6 +13,10 @@ It covers the mod package and manifest, the game's own scripts and what to hook,
 | `references/engine.md` | The game's scripts, components, network limits, how to find what to hook |
 | `references/multiplayer.md` | Masters and slaves, session mods, sync channels, patterns |
 | `references/stratagems.md` | Stratagem data, menus, loadouts, cooldowns, payloads, icons |
+| `references/ui.md` | HUD and menu drawing, shipped images and fonts, world-space drawing |
+| `references/rendering.md` | Shading values, the render config, shader swaps, textures, lights |
+| `references/game-modes.md` | Expansions and modes: mission seeds, maps, campaign safety, lobby sync |
+| `references/live-testing.md` | Scripted in-game runs, probes and tester checklists |
 | `references/orchestration.md` | Splitting a large mod across several agents |
 | `assets/mod-template/` | A mod skeleton to copy, with working offline tests |
 

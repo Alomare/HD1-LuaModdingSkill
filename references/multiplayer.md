@@ -50,6 +50,10 @@ Check the bit widths in `network_messages.lua` before reusing a message: a value
 - Only correct local players more than about 2 seconds behind, so corrections don't echo between machines.
 - A new entry (a player joining, a local controller added) takes the squad's longest remaining time at once, without waiting to detect a throw.
 
+**Shared values that outlive a mission.** Lobby member data stays after a mission ends. Put the mission and run in every shared value, count whole numbers only, let the host share a clock, and keep a leaving player's contribution in sums. Helldivers Arcade's full rules are in `game-modes.md` section 6.
+
+**Signal with data every machine already has.** A mission seed has free digits above the seventh: a mode can mark the missions it starts there, and every machine knows without a message (`game-modes.md` section 2). Events every machine sees (an enemy dying) can drive the same local result on each machine.
+
 **Undo on session change.** `obsidian.on_session(fn)` fires when the lobby clears or stops being cleared. Take back global edits, hidden items and carried entries there.
 
 ## 5. What to test
