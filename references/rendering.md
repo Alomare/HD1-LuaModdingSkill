@@ -1,6 +1,6 @@
 # Rendering, shaders and textures
 
-What a mod can change in how HELLDIVERS (2015) draws a frame, from the work on Enhanced Visuals, Enhanced Textures and Photo Mode (github.com/Alomare/HD1-EnhancedVisuals, HD1-PhotoMode). These mods ship data resources, not only Lua. Facts were seen in game runs (paused frames compared pixel by pixel) unless marked **(inferred)**; build 6001293.
+What a mod can change in how HELLDIVERS (2015) draws a frame, from the work on Enhanced Visuals, Upscaled Textures and Photo Mode (github.com/Alomare/HD1-EnhancedVisuals, HD1-UpscaledTextures, HD1-PhotoMode). These mods ship data resources, not only Lua. Facts were seen in game runs (paused frames compared pixel by pixel) unless marked **(inferred)**; build 6001293.
 
 ## Contents
 
@@ -51,7 +51,7 @@ Only one mod can own the render config. Obsidian lets the last mod in the load o
 - 13,072 texture entries but only 2,045 distinct textures: level bundles carry copies (median 2, up to 60). **Replace every copy**, or the old texture shows wherever one was left.
 - Nothing is streamed. Every texture is whole inside the bundles, so a replacement is a plain resource, and a texture at double size loads with no crash (proven with a probe that striped each replaced texture magenta).
 - Formats: DXT5, DXT1, ATI2/BC5 normal maps (two channels; the shader rebuilds the third), uncompressed 32-bit, a few DXT3. A resource is a plain DDS with every mip, then a 4-byte tail.
-- Upscaling pipeline lessons from Enhanced Textures: upscale packed mask channels one at a time so maps don't bleed; pad tiling textures by wrapping the opposite edge; resize channel by channel (Pillow weights colour by alpha on RGBA and darkens it); skip cube maps and volume textures; compare each packed texture with the original (format, mip count, PSNR) before shipping. Interface textures gained too little to be worth it.
+- Upscaling pipeline lessons from Upscaled Textures: upscale packed mask channels one at a time so maps don't bleed; pad tiling textures by wrapping the opposite edge; resize channel by channel (Pillow weights colour by alpha on RGBA and darkens it); skip cube maps and volume textures; compare each packed texture with the original (format, mip count, PSNR) before shipping. Interface textures gained too little to be worth it.
 - A full replacement set is large (hundreds of MB zipped), so ship it as a separate mod or optional download.
 
 ## 5. Lights
