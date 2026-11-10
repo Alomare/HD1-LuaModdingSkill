@@ -1,6 +1,6 @@
 # Stratagems
 
-How stratagems work in HELLDIVERS (2015) and how mods add, hide, carry and sync them. Learned while building Remixed Stratagems and Shared Resupply (github.com/Alomare/HD1-RemixedStratagems, github.com/Alomare/HD1-SharedResupply); read their source for working examples.
+How stratagems work in HELLDIVERS (2015) and how mods add, hide, carry and sync them. Learned while building More Stratagems and Shared Resupply (github.com/Alomare/HD1-MoreStratagems, github.com/Alomare/HD1-SharedResupply); read their source for working examples.
 
 ## Contents
 
@@ -94,7 +94,7 @@ Network widths that limit designs: slot index `uint4` (15 entries), id `uint7` (
 - Stratagem icons are sub-materials of `hud/hud` in bundle `95b2365a6369ee36`: 80x80 uncompressed BGRA textures.
 - A mod ships a new texture and material as `resources` in `obsidian.json`, in the boot bundle `9cf71054ea26dddf`, and names them in `def.icon` and `def.icon_material`.
 - `def.icon` is the name of the sub-material inside the material (the icon name the build script hashes into the material record), not the texture's resource name. A gui asked for a sub-material the material lacks stops the game, with no CRASH file, as soon as a screen draws the icon (the Arsenal, the drop). More Stratagems shipped this mistake once; a test that reads the names out of the build script catches it.
-- `tools/build_icon.py` in Remixed Stratagems and Shared Resupply reads the game's icon by name hash, edits the pixels with Pillow and writes the resource files plus a preview PNG. Copy it and change only the drawing step.
+- `tools/build_icon.py` in More Stratagems and Shared Resupply reads the game's icon by name hash, edits the pixels with Pillow and writes the resource files plus a preview PNG. More Stratagems also builds icons from ready-made PNGs. Copy it and change only the drawing step.
 - Mission (yellow) colour, sampled from the Hellbomb icon: RGB 187, 151, 75. When recolouring, keep near-white highlights white (the yellow icons keep them), or symbols such as the Resupply "+" disappear into the shapes.
 - Always look at the preview next to a vanilla icon before shipping.
 

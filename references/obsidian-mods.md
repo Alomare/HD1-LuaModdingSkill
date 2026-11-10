@@ -15,7 +15,7 @@ Everything about the mod package, the Obsidian loader and the way a mod talks to
 9. [Releasing](#9-releasing)
 10. [Deploying locally](#10-deploying-locally)
 
-A ready skeleton is in `assets/mod-template/`. Real examples: github.com/Alomare/HD1-RemixedStratagems, HD1-SharedResupply, HD1-PhotoMode, HD1-BetterHUD, HD1-EnhancedVisuals, HD1-HelldiversArcade.
+A ready skeleton is in `assets/mod-template/`. Real examples: github.com/Alomare/HD1-MoreStratagems, HD1-SharedResupply, HD1-PhotoMode, HD1-BetterHUD, HD1-EnhancedVisuals, HD1-HelldiversArcade.
 
 ## 1. Mod folder and release zip
 
@@ -329,7 +329,7 @@ Rules:
 - A session mod's API changes run only while the lobby is cleared. Otherwise calls answer `false, "not_cleared"`. Give every effect a `remove`.
 - Actions answer `true`, or `false` and a short reason (`needs_session`, `not_cleared`, `not_in_mission`, `host_only`, `no_avatar`, `not_available`, `bad_type`, `out_of_range`, ...). Nothing throws on an ordinary refusal: show or ignore the reason.
 - Gate on the API version. Calls added in later releases are missing on older APIs. State the minimum in the README ("Needs Obsidian API 1.40.0 or later") and check it in `main.lua` (section 4).
-- If an older API answers `not_ready` for a definition made in the main chunk (before the game has the data), retry on frames until it stops answering that. This is the pattern in HD1-RemixedStratagems and HD1-SharedResupply:
+- If an older API answers `not_ready` for a definition made in the main chunk (before the game has the data), retry on frames until it stops answering that. This is the pattern in HD1-MoreStratagems and HD1-SharedResupply:
 
 ```lua
 local function define()

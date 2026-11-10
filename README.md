@@ -2,7 +2,7 @@
 
 Instructions and reference for AI coding agents that build Lua mods for HELLDIVERS (2015) with [Obsidian Mod Manager](https://github.com/Alomare/ObsidianModManager) and the [Obsidian API](https://github.com/Alomare/ObsidianAPI). It works with Claude Code and with any agent that can read Markdown files: Codex, Cursor, Gemini CLI, Copilot, Aider and others.
 
-It covers the mod package and manifest, the game's own scripts and what to hook, multiplayer and session mods, stratagems, HUD and menu drawing, graphics and textures, game modes, testing and releasing. Most of it comes from building and shipping real mods, such as [Remixed Stratagems](https://github.com/Alomare/HD1-RemixedStratagems) and [Shared Resupply](https://github.com/Alomare/HD1-SharedResupply).
+It covers the mod package and manifest, the game's own scripts and what to hook, multiplayer and session mods, stratagems, HUD and menu drawing, graphics and textures, game modes, testing and releasing. Most of it comes from building and shipping real mods, such as [More Stratagems](https://github.com/Alomare/HD1-MoreStratagems) and [Shared Resupply](https://github.com/Alomare/HD1-SharedResupply).
 
 ## Contents
 
