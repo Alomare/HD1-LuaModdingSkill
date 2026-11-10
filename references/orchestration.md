@@ -1,10 +1,10 @@
 # Splitting a mod across agents
 
-A mod with several independent parts (research, icon, manifest, API calls, gameplay) can be built by one lead agent handing parts to helper agents, each on a model and effort level matched to the part. This kept the lead's context small when building Shared Resupply. It applies to any agent setup that can start helpers; with none, do the parts in the same order yourself.
+A mod with several independent parts (research, icon, manifest, API calls, gameplay) can be built by one lead agent handing parts to helper agents, each on a model and effort level matched to the part. This kept the context of the lead small when building Shared Resupply. It applies to any agent setup that can start helpers; with none, do the parts in the same order yourself.
 
 ## How the lead works
 
-- The lead writes the briefs, decides between steps, checks every result and assembles. It doesn't redo the helpers' reading.
+- The lead writes the briefs, decides between steps, checks every result and assembles. It doesn't redo the reading the helpers did.
 - Every helper starts with no context. A brief names exact paths, what was already found (so it isn't researched again), the files the helper owns, what it must not touch, and what to return with a word limit. The return is the only thing the lead sees.
 - Tell helpers not to commit, bump versions or edit changelogs; the lead does those once, at the end.
 - Give parallel helpers separate files. Two helpers editing one file at the same time lose work.
@@ -25,11 +25,11 @@ The lead runs both test suites itself before committing, looks at any image outp
 ## What to check in helper output
 
 - Tests pass when the lead runs them, not only in the report.
-- Images: compare with the game's own (a recolour can wash out a symbol).
-- Conflicts between helpers' designs: two helpers may each assume something the other changed (for example, one hides an entry and shifts the index the other relies on).
+- Images: compare with the images in the game (a recolour can wash out a symbol).
+- Conflicts between helper designs: two helpers may each assume something the other changed (for example, one hides an entry and shifts the index the other relies on).
 - Rules the helper broke while trying to help, such as shipping a file the other mods leave out of the zip.
 - Generated files committed by accident (`__pycache__`, previews).
 
 ## Cost
 
-Helpers on the strongest model cost the most; most of a mod's tokens go to the core build. Small-model helpers handle skeletons, recolours and release files well. The saving comes from the lead never loading the files the helpers read.
+Helpers on the strongest model cost the most; most of the tokens for a mod go to the core build. Small-model helpers handle skeletons, recolours and release files well. The saving comes from the lead never loading the files the helpers read.

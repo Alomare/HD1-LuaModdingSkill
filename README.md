@@ -1,18 +1,19 @@
 # HD1 Lua Modding Skill
 
-Instructions and reference for AI coding agents that build Lua mods for HELLDIVERS (2015) with [Obsidian Mod Manager](https://github.com/Alomare/ObsidianModManager) and the [Obsidian API](https://github.com/Alomare/ObsidianAPI). It works with Claude Code and with any agent that can read Markdown files: Codex, Cursor, Gemini CLI, Copilot, Aider and others.
+Instructions and reference for AI coding agents that build Lua mods for HELLDIVERS (2015) with [Obsidian Mod Manager](https://github.com/Alomare/ObsidianLauncher) and the [Obsidian API](https://github.com/Alomare/ObsidianAPI). It works with Claude Code and with any agent that can read Markdown files: Codex, Cursor, Gemini CLI, Copilot, Aider and others.
 
-It covers the mod package and manifest, the game's own scripts and what to hook, multiplayer and session mods, stratagems, HUD and menu drawing, graphics and textures, game modes, testing and releasing. Most of it comes from building and shipping real mods, such as [More Stratagems](https://github.com/Alomare/HD1-MoreStratagems) and [Shared Resupply](https://github.com/Alomare/HD1-SharedResupply).
+It covers the mod package and manifest, the game scripts and what to hook, multiplayer and session mods, camera mods, weapons and enemies, stratagems, HUD and menu drawing, graphics and textures, game modes, testing and releasing. Most of it comes from building and shipping real mods, such as [More Stratagems](https://github.com/Alomare/HD1-MoreStratagems) and [Shared Resupply](https://github.com/Alomare/HD1-SharedResupply).
 
 ## Contents
 
 | Path | What it holds |
 | --- | --- |
-| `SKILL.md` | The entry point: workflow, key rules, where to read next |
+| `SKILL.md` | The entry point: workflow, main rules, where to read next |
 | `references/obsidian-mods.md` | Mod folder, `obsidian.json`, loader calls, options, tests, releases |
-| `references/engine.md` | The game's scripts, components, network limits, how to find what to hook |
+| `references/engine.md` | The game scripts, components, network limits, how to find what to hook |
 | `references/multiplayer.md` | Masters and slaves, session mods, sync channels, patterns |
 | `references/stratagems.md` | Stratagem data, menus, loadouts, cooldowns, payloads, icons |
+| `references/gameplay.md` | The camera frustum in gameplay, third person cameras, weapon range and aim, enemy detection, changes for one call |
 | `references/ui.md` | HUD and menu drawing, shipped images and fonts, world-space drawing |
 | `references/rendering.md` | Shading values, the render config, shader swaps, textures, lights |
 | `references/game-modes.md` | Expansions and modes: mission seeds, maps, campaign safety, lobby sync |
@@ -34,11 +35,11 @@ Or in one project only: `<project>/.claude/skills/hd1-lua-modding`. Claude loads
 
 ### Other agents
 
-Clone the folder anywhere, for example next to your mods, then point the agent at `SKILL.md` from the instruction file the agent reads:
+Clone the folder anywhere, for example next to the mods you work on, then point the agent at `SKILL.md` from the instruction file the agent reads:
 
 | Agent | Instruction file |
 | --- | --- |
-| Codex, and agents that read `AGENTS.md` | `AGENTS.md` in your mod repository |
+| Codex, and agents that read `AGENTS.md` | `AGENTS.md` in the mod repository |
 | Gemini CLI | `GEMINI.md` |
 | Cursor | a rule in `.cursor/rules/` |
 | GitHub Copilot | `.github/copilot-instructions.md` |
@@ -55,8 +56,8 @@ The block at the top of `SKILL.md` between the `---` lines is metadata for Claud
 ## What you need
 
 - Obsidian Mod Manager, and the game on Steam.
-- LuaJIT 2.0 to run offline tests (the manager's repository has a build script).
-- A decompiled copy of the game's scripts, for reading the game code. `references/engine.md` explains how to make one. The game's files aren't redistributed here.
+- LuaJIT 2.0 to run offline tests (the manager repository has a build script).
+- A decompiled copy of the game scripts, for reading the game code. `references/engine.md` explains how to make one. Game files aren't redistributed here.
 
 ## License
 

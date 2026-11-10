@@ -1,6 +1,6 @@
 # Obsidian mods: package, loader and API
 
-Everything about the mod package, the Obsidian loader and the way a mod talks to Obsidian API. Sources: the Wiki pages in `app/src/wiki/` of github.com/Alomare/ObsidianModManager, `loader/src/*.lua` there, and REFERENCE.md of github.com/Alomare/ObsidianAPI. Where a statement is unconfirmed it is marked **(unconfirmed)**.
+Everything about the mod package, the Obsidian loader and the way a mod talks to Obsidian API. Sources: the Wiki pages in `app/src/wiki/` of github.com/Alomare/ObsidianLauncher, `loader/src/*.lua` there, and REFERENCE.md of github.com/Alomare/ObsidianAPI. Where a statement is unconfirmed it is marked **(unconfirmed)**.
 
 ## Contents
 
@@ -76,6 +76,9 @@ Obsidian checks it on import and names the field that is wrong. Unknown fields a
 | `resources` | no | Game files to replace or add (below). |
 | `options` | no | Settings players change in the app (below). |
 | `keybinds` | no | Keys players can rebind. |
+| `parts` | no | Pieces of a session mod, each `client` or `session` (below). Obsidian 1.5.0. Not for libraries or expansions. |
+| `option_groups` | no | Headings that fold, to sort the options under (below). Obsidian 1.5.0. |
+| `option_previews` | no | Pictures of option values drawn from SVG templates (below). Obsidian 1.5.0. |
 | `loader_api` | no | Loader API version needed. `1` when left out. A loader with a lower version refuses the mod. |
 | `min_obsidian` | no | Oldest Obsidian that works, such as `"1.2.0"`. Older ones refuse the mod. Obsidian before 1.1 ignores it. |
 | `load` | no | Load order request: `"first"`, `"last"`, or an object with `position`, `before`, `after`, `before_patches`, `after_patches`. Obsidian 1.3.1 and earlier read only `"last"`. |
@@ -97,7 +100,7 @@ Text shown to players is an object by language: `en`, `pt-BR`, `zh-CN` for the a
 
 ### options
 
-Each option has `id` (lowercase letters, digits, `_`), `type`, `default`, `label`, and optionally `description`, `visible_when` (object of option ids and required values) and `scope`.
+Each option has `id` (lowercase letters, digits, `_`), `type`, `default`, `label`, and optionally `description`, `visible_when` (object of option ids and required values), `scope`, `group` (an `option_groups` id) and `part` (a `parts` id).
 
 | type | value | extra fields |
 |---|---|---|
@@ -117,7 +120,7 @@ Obsidian validates values against the declaration, so the mod never sees a value
 "keybinds": [ { "id": "toggle", "default": "f8", "label": { "en": "Toggle" } } ]
 ```
 
-Key names are the game's, lower case: `f8`, `k`, `insert`. `pad` names a `choice` option holding the controller input for the same action.
+Key names come from the game, in lower case: `f8`, `k`, `insert`. `pad` names a `choice` option holding the controller input for the same action.
 
 ### resources
 
@@ -134,6 +137,7 @@ Each entry replaces or adds a game resource. `type` and `name` are the game path
 | `variants`, `clips` | Per-language variants, single clips of a sound bank |
 | `bundle` | 16 hex digits. Required except with `clips`. |
 | `when` | Options that must have these values for the entry to be used. Changing such an option needs a new deploy. |
+| `part` | The part the entry belongs to (Obsidian 1.5.0). An entry of a part that is off isn't deployed. |
 
 The boot bundle is `9cf71054ea26dddf`. UI art, fonts and materials a gui draws must be in it: a gui that lists a material that is not loaded can stop the game. The example mods put an icon texture and material there:
 
@@ -145,6 +149,42 @@ The boot bundle is `9cf71054ea26dddf`. UI art, fonts and materials a gui draws m
 ```
 
 Prefer hooks over replacing whole game scripts: a hook changes one function, so two mods can touch the same script. A resource is static and cannot switch off mid-game, so in a session mod use resources for data read at startup and hooks for behaviour. Making textures or materials from scratch needs tools that are not part of the manager; the example mods ship a `tools/build_icon.py` for the icon.
+
+### parts
+
+Obsidian 1.5.0. Splits a session mod into pieces, so the personal pieces keep running in a public lobby where the gameplay pieces switch off (rules in section 5).
+
+```json
+"scope": "session",
+"parts": [
+  { "id": "view", "scope": "client", "name": { "en": "Camera and view" } },
+  { "id": "weapon_range", "scope": "session", "option": "max_weapon_range", "name": { "en": "Max weapon range" } }
+]
+```
+
+- `id` follows the option id rules; `scope` is `client` or `session`; `name` and `description` show in the app and in the in-game notice.
+- `option` names a toggle that switches the part. A part that is off runs no code, deploys no file and counts for nothing players compare. Changing that toggle needs a deploy.
+- Options, resources and code name the part they belong to. Anything without a part follows the strictest part that is on.
+- The top-level `scope` stays the strictest one, `session` when any part is. An older Obsidian reads only that and runs the whole mod as a session mod, so no fallback code is needed.
+
+### option_groups and option_previews
+
+Obsidian 1.5.0. Older versions ignore both and list the options as before.
+
+```json
+"option_groups": [
+  { "id": "idle", "label": { "en": "Idle" }, "description": { "en": "Between shots." } },
+  { "id": "aim", "label": { "en": "Aiming" }, "collapsed": true }
+],
+"option_previews": [
+  { "id": "idle_preview", "group": "idle", "template": "preview/idle.svg", "width": 240, "height": 140,
+    "label": { "en": "Preview" } }
+]
+```
+
+- An option joins a group with `"group": "<id>"`. Options without a group come first, then each group in order. `collapsed` starts a group folded, and the app remembers what the player opened.
+- A preview shows at the top of the named group, redrawn while the player edits values. The template is an SVG file in the mod, at most 64 KB, checked on import. `{{expr}}` in an attribute or text becomes the value of the expression; `data-if="expr"` removes an element while the expression is false. Expressions take numbers, `'text'`, option ids, arithmetic, comparisons, `&& || !`, `a ? b : c`, and `min`, `max`, `abs`, `round`, `floor`, `ceil`, `clamp`. Scripts, `foreignObject`, `on...` attributes and outside links are taken out. Full grammar: Wiki page "Options and keys".
+- Custom Crosshair builds both templates with a script from the same rectangle table the mod draws from, and a test fills them in the way Obsidian does and compares the result with the game drawing. Rounding then matches pixel for pixel.
 
 ### Complete example
 
@@ -184,30 +224,32 @@ Prefer hooks over replacing whole game scripts: a hook changes one function, so 
 
 - The game runs LuaJIT 2.0 bytecode and cannot parse Lua source. The manager compiles every mod script (the entry, `modules`, `lua` resources with `source`) at each deploy. A mod ships plain `.lua` text and needs no compiler.
 - Write Lua 5.1 syntax plus LuaJIT extensions: no integer division or `//`, no 5.3 bit operators. Use the `bit` library for bit operations. Test with LuaJIT 2.0, the version the game uses.
-- Mod scripts see the game's globals and the standard libraries: `string`, `table`, `math`, `io`, `os`, `coroutine`, `debug`, `package`, `bit`, `jit`. The loader logs at startup any global a mod adds or replaces.
+- Mod scripts see the game globals and the standard libraries: `string`, `table`, `math`, `io`, `os`, `coroutine`, `debug`, `package`, `bit`, `jit`. The loader logs at startup any global a mod adds or replaces.
 - Read game globals with `rawget(_G, "Name")`: a global the game has not defined yet is `nil`, and some tables are built after mods start. Use `obsidian.hook` (waits for the global) or `obsidian.on_require` for tables that appear later.
 - The loader adds one global, the table `obsidian`. Everything registered through it runs protected: an error is logged and never stops the game.
 - The entry script runs once at game boot, in load order. An error at startup switches the mod off for the session and writes `loader.log`. Errors in callbacks are logged at most three times per place. A mod that keeps failing is switched off.
 - `obsidian.module(name)`: loads another file of the mod and returns what it returns. `name` is the path without `.lua` (`"src/feature"`), and the file must be listed in `modules`. Results are cached, like `require`.
 - `obsidian.import(id)`: what the `entry` script of another running mod returned, or `nil`. List the mod in `requires` so it starts first. A library exports the table other mods use by returning a table from `main.lua`.
 - Logs: `%APPDATA%\Arrowhead\Helldivers\ObsidianModManager\logs\`. Each mod writes `<id>.log` (id reduced to letters, digits, `_`, `-`) and the loader writes `loader.log`.
-- The game's vectors last one frame. Copy numbers, never keep a vector in a variable across frames.
+- Game vectors last one frame. Copy numbers, never keep a vector in a variable across frames.
 
 ## 4. Loader calls
 
-All calls are on the global `obsidian`. `obsidian.version` is `1`. `obsidian.capabilities` is a read-only table of booleans (`hook`, `wrap`, `on_require`, `on_frame`, `on_session`, `after_startup`, `settings`, `keybind`, `session`, `text`, `log`, `module`, `import`, `caller`, `info`, `menu`, `toast`, `notify`, `storage`, `ui`, `scope`, `guardrails`, `expansion`). Test a capability before using a call that came later.
+All calls are on the global `obsidian`. `obsidian.version` is `1`. `obsidian.capabilities` is a read-only table of booleans (`hook`, `wrap`, `on_require`, `on_frame`, `on_session`, `after_startup`, `settings`, `keybind`, `session`, `text`, `log`, `module`, `import`, `caller`, `info`, `menu`, `toast`, `notify`, `storage`, `ui`, `scope`, `guardrails`, `expansion`, `parts`). Test a capability before using a call that came later.
 
 ### Hooks and callbacks
 
 | Call | Meaning |
 |---|---|
 | `obsidian.hook(target, method, fn)` | Wraps a game function. `target` is a table or the name of a global table. `fn(original, self, ...)` gets the original first. Waits if the global is not defined yet. If `fn` errors, the original runs. **Session-gated** (below). |
-| `obsidian.wrap(target, method, fn)` | The same, but **always runs**, also in an uncleared lobby and outside expansion content. For the way into an expansion, or a mod whose replaced files cannot be switched off. Anything else uses `hook`. |
+| `obsidian.wrap(target, method, fn)` | The same, but **always runs**, also in an uncleared lobby and outside expansion content. For the way into an expansion, or a mod with replaced files that cannot be switched off. Anything else uses `hook`. |
 | `obsidian.on_require(name, fn)` | Calls `fn(module)` when the game loads the script `name` (`"lua/settings/perk_settings"`). Use it to adjust a settings table right after the game builds it. |
-| `obsidian.on_frame(fn)` | Calls `fn` every frame. Return `true` to stop. Session mods: frames run only in a cleared lobby. |
+| `obsidian.on_frame(fn, opts)` | Calls `fn` every frame. Return `true` to stop. Session mods: frames run only in a cleared lobby. `opts.always` (Obsidian 1.5.0) runs `fn` in any lobby, for work only this player sees; an older loader ignores it and gates the frame. |
 | `obsidian.after_startup(fn)` | Calls `fn` once every mod has started. |
-| `obsidian.keybind(id, fn, opts)` | Calls `fn` each time the key goes down. Session mod keys wait for a cleared lobby. `opts.always` leaves the key alone, for keys that act only on this player's screen. |
-| `obsidian.on_session(fn)` | Calls `fn(on)` when the loader switches this mod on or off. Undo lasting changes when `on` is `false`. |
+| `obsidian.keybind(id, fn, opts)` | Calls `fn` each time the key goes down. Session mod keys wait for a cleared lobby. `opts.always` leaves the key alone, for keys that act only on the screen of this player. |
+| `obsidian.on_session(fn, opts)` | Calls `fn(on)` when the loader switches this mod on or off. Undo lasting changes when `on` is `false`. |
+
+`obsidian.hook`, `on_frame`, `keybind` and `on_session` take `opts.part` (Obsidian 1.5.0) in a mod with parts: the registration belongs to that part (section 5).
 
 ```lua
 obsidian.hook("Damage", "apply", function(original, target, amount, ...)
@@ -225,12 +267,12 @@ end)
 
 | Call | Meaning |
 |---|---|
-| `obsidian.settings.get(id)` | Value of option `id`: the player's choice or the default. Changes in the app apply at next game start, with no deploy. |
+| `obsidian.settings.get(id)` | Value of option `id`: the value the player chose, or the default. Changes in the app apply at next game start, with no deploy. |
 | `obsidian.text(key, ...)` | Text from `locales/`, in the game language, English fallback. Extra args fill `%s` and `%d`. |
-| `obsidian.log(...)` | Writes a line to the mod's log. |
+| `obsidian.log(...)` | Writes a line to the mod log. |
 | `obsidian.storage.get(key, default)`, `set(key, value)`, `all()` | Strings, numbers and booleans kept between launches. `set(key, nil)` removes. Written at once, so never every frame. |
 | `obsidian.toast(text, seconds)` | Short message at the top left. |
-| `obsidian.notify(text, seconds)` | Message in the game's hint box (default 7 s). Rare, important messages. Up to 3 waiting per mod, then `false, "queue_full"`. |
+| `obsidian.notify(text, seconds)` | Message in the game hint box (default 7 s). Rare, important messages. Up to 3 waiting per mod, then `false, "queue_full"`. |
 
 ### Mods and scope
 
@@ -238,9 +280,9 @@ end)
 |---|---|
 | `obsidian.module(name)`, `obsidian.import(id)` | See section 3. |
 | `obsidian.info(id)` | `{ id, name, version, scope }` for a running mod, `nil` if it is not running. No `id` means the calling mod. Use `info("obsidian.api").version` for version gates. |
-| `obsidian.scope()` | How the calling mod runs this deploy: `"client"`, `"session"` or `"expansion"`. |
-| `obsidian.caller()` | Id of the mod whose code is running. |
-| `obsidian.session.cleared()` | `true` while the calling mod may run. |
+| `obsidian.scope()` | How the calling mod runs this deploy: `"client"`, `"session"`, `"hybrid"` (a client part and a session part on, Obsidian 1.5.0) or `"expansion"`. |
+| `obsidian.caller()` | Id of the mod that the running code belongs to. |
+| `obsidian.session.cleared(part)` | `true` while the calling mod may run. With a part id: always `true` for a client part, `false` for a part that is off. |
 | `obsidian.session.guard(t, free)` | A view of table `t` for other mods. Functions named in `free` work normally. All others answer `false, "needs_session"` for client callers and `false, "not_cleared"` when not cleared (for libraries). |
 | `obsidian.session.members()` | Other players: `{ peer, obsidian, modset, consent }`. |
 | `obsidian.guardrails()` | `{ consent, block_achievements, freeze_progress }` as the player set them. |
@@ -279,7 +321,7 @@ if not obsidian.capabilities.on_frame then return end
 | Situation | Session mods |
 |---|---|
 | Alone, friends-only or private lobby | Always run, with anyone, vanilla players included |
-| Public lobby | Run only if every other player either runs the same set (same versions and option values), or runs Obsidian and does not block other players' session mods |
+| Public lobby | Run only if every other player either runs the same set (same versions and option values), or runs Obsidian and does not block session mods of other players |
 | Public lobby, a vanilla player present | Off |
 | Public lobby, a player who blocks session mods, with a different set | Off |
 
@@ -287,7 +329,7 @@ if not obsidian.capabilities.on_frame then return end
 
 ### Option values compared
 
-For a session mod or expansion, every option value counts when two players' sets are compared, so a balance slider must match. Mark personal options (`color`, camera distance) with `"scope": "client"` so players can differ and still match.
+For a session mod or expansion, every option value counts when the sets of two players are compared, so a balance slider must match. Mark personal options (`color`, camera distance) with `"scope": "client"` so players can differ and still match.
 
 ### every_player
 
@@ -295,14 +337,36 @@ For a session mod or expansion, every option value counts when two players' sets
 
 ### Session content and the Galactic War
 
-Any deployed session content stops Galactic War and leaderboard results being sent, closes Proving Grounds, and limits matchmaking to Obsidian players when the content cannot switch off live (data overrides, resources, older imported mods). Expansion content does this only for missions the content ran in. These rules prevent accidents. They are not anti-cheat.
+Any deployed session content stops Galactic War and leaderboard results being sent, closes Proving Grounds, and limits matchmaking to Obsidian players when the content cannot switch off live (data overrides, resources, older imported mods). Expansion content does this only for missions the content ran in. These rules prevent accidents and are not anti-cheat.
+
+### Mods with parts
+
+Obsidian 1.5.0. A session mod with `parts` (section 2) tags each registration with the part it belongs to:
+
+```lua
+local VIEW = { part = "view" }
+obsidian.hook("CameraManager", "update", update_camera, VIEW)
+obsidian.on_frame(steer, VIEW)
+obsidian.keybind("toggle_view", toggle, { part = "view", always = true })
+obsidian.hook("FirearmComponent", "update_slaves", longer_range, { part = "weapon_range" })
+```
+
+- Code of a client part runs in any lobby; code of a session part only in a cleared one. In a lobby that isn't cleared the game names the session parts that went off and says the rest keeps working.
+- A mod with a client part and a session part on is **hybrid**, shown with a diamond half green, half red. While any session part is on, the mod counts as session for the deploy: Galactic War results aren't sent and Proving Grounds is closed. With every session part switched off by the part options, the mod deploys as a client mod.
+- Files of a client part are personal: they don't keep vanilla players out of a public lobby. Files without a part count as session content.
+- Options of a client part count as `"scope": "client"`, and options of a part that is off don't count at all.
+- One Lua state holds every part, so code of a client part can still call session code directly. Only the registrations are gated. Read what a session part changed each time instead of keeping a copy.
+- A library the mod requires deploys as session while a session part is on, and the calls the library guards treat the whole mod as session. In a public lobby a client part gets `false, "not_cleared"` from guarded Obsidian API calls (`api.world.prop` is one). Use free calls or engine calls there: Integrated Third Person spawns the sky dome with `World.spawn_unit`.
+- Code that runs once (the entry script, `on_require`) isn't tagged and isn't gated.
+- What belongs in a client part: what this player sees, hears or presses. A camera is personal. Time scale and gravity aren't, though they run on one machine: the machines drift apart. Information other players don't get isn't personal either: patrol markers, fog taken away, a camera past the map bounds, spectating. Integrated Third Person keeps a longer view and an enemy radar in the client part as the price of the view behind the shoulder, which loses the top-down view of everything behind the player.
+- Check `obsidian.capabilities.parts` before telling the player that the personal parts keep running: an older loader gates everything as session code.
 
 ### Things to avoid in session mods
 
 - Replacing globals directly, or replacing game scripts with `resources` for gameplay: not switchable live.
-- Sending your own network messages to other players outside the game's own code.
+- Sending network messages to other players outside the game code.
 - Writing guarded values (`hitpoints_real`, `rounds`, `cooldown_timer`, `uses_left`, `num_grenades`, `extra_lives`): trips anti-tamper and cuts the player off the network. Use Obsidian API.
-- Changing your own progress (XP, unlocks) is allowed, but XP reaches shared leaderboards.
+- Changing the progress of this player (XP, unlocks) is allowed, but XP reaches shared leaderboards.
 
 ### Libraries and expansions
 
@@ -311,7 +375,7 @@ Any deployed session content stops Galactic War and leaderboard results being se
 
 ## 6. Using Obsidian API
 
-Obsidian API (id `obsidian.api`) is a library mod: the game's data by name, checked changes, and ready actions. It does nothing alone. Documentation is REFERENCE.md in github.com/Alomare/ObsidianAPI.
+Obsidian API (id `obsidian.api`) is a library mod: game data by name, checked changes, and ready actions. It does nothing alone. Documentation is REFERENCE.md in github.com/Alomare/ObsidianAPI.
 
 ```json
 "scope": "session",
@@ -326,7 +390,7 @@ local api = obsidian.import("obsidian.api")
 Rules:
 
 - A client mod can require it and stays a client mod. It can read data and use `api.ui`, `api.audio`, `api.music`, `api.map`, `api.events` and `api.mod_settings`. Anything that changes the shared game answers `false, "needs_session"`.
-- A session mod's API changes run only while the lobby is cleared. Otherwise calls answer `false, "not_cleared"`. Give every effect a `remove`.
+- API changes from a session mod run only while the lobby is cleared. Otherwise calls answer `false, "not_cleared"`. Give every effect a `remove`.
 - Actions answer `true`, or `false` and a short reason (`needs_session`, `not_cleared`, `not_in_mission`, `host_only`, `no_avatar`, `not_available`, `bad_type`, `out_of_range`, ...). Nothing throws on an ordinary refusal: show or ignore the reason.
 - Gate on the API version. Calls added in later releases are missing on older APIs. State the minimum in the README ("Needs Obsidian API 1.40.0 or later") and check it in `main.lua` (section 4).
 - If an older API answers `not_ready` for a definition made in the main chunk (before the game has the data), retry on frames until it stops answering that. This is the pattern in HD1-MoreStratagems and HD1-SharedResupply:
@@ -368,7 +432,7 @@ Where the guide and the generated "Every call" list disagree, the list is right.
 
 ## 7. Options in game
 
-Players change `obsidian.json` options in the app. Mods can also show rows in the game's own pause menu, under **Mods**, through `api.mod_settings`.
+Players change `obsidian.json` options in the app. Mods can also show rows in the game pause menu, under **Mods**, through `api.mod_settings`.
 
 ```lua
 -- Rows bound to options need Obsidian API 1.16 (mod_settings.BINDS).
@@ -416,7 +480,7 @@ How to make code testable:
 
 LuaJIT 2.0 for testing comes from the manager repository: `tools/build-luajit.cmd` (Windows) or `sh tools/build-luajit.sh` builds `target/luajit/luajit` **(path per CONTRIBUTING.md)**. Any LuaJIT 2.x on the path works for these tests **(unconfirmed for other builds)**.
 
-Tests prove the logic only. Hooks, frame order and the game's tables still need a run in the game, with the mod log open.
+Tests prove the logic only. Hooks, frame order and game tables still need a run in the game, with the mod log open.
 
 ## 9. Releasing
 
@@ -448,6 +512,17 @@ The section becomes the release notes. The workflow stops if the section is miss
 
 Versioning: last number for fixes, middle for features and options, first for changes players should know before updating. Keep option and key ids stable.
 
+### Nexus Mods
+
+A second workflow can upload the same zip to Nexus Mods after the GitHub release. Enhanced Visuals (github.com/Alomare/HD1-EnhancedVisuals, `.github/workflows/nexus.yml` and `tools/nexus_release.py`) does it with `Nexus-Mods/upload-action`:
+
+- The repository secret `NEXUS_API_KEY` holds a Nexus Mods API key. Stop the run with a message when the secret is missing, and never run the job with debug logging on: the action writes the key into the debug log, and the logs of a public repository are open to anyone.
+- `mod_id` is the Unique Mod ID from the Files tab (Advanced): the game id shifted left 32 bits plus the mod number. HELLDIVERS (2015) is game 3552, so mods/48 is 3552 << 32 | 48 = 15255723835440.
+- `file_id` is the File ID under API of the existing file. Each upload becomes a new version of that file, and `archive_existing_version: true` moves the old version to the archive.
+- The changelog section becomes the Nexus changelog, one change per line. Read the current title and description of the file from the Nexus API and send them back unchanged, so text edited on the page stays.
+- A page that carries more than one mod, such as the Enhanced Visuals page that also holds Upscaled Textures, should keep `update_mod_version: false`: the version of the page then stays as set by hand.
+- Skip prereleases, and allow a run by hand for a tag that's already out.
+
 ### Before releasing
 
 1. Import the zip itself (not the folder) to test what players get.
@@ -460,7 +535,7 @@ Versioning: last number for fixes, middle for features and options, first for ch
 
 ### With the app
 
-Download Obsidian Mod Manager from github.com/Alomare/ObsidianModManager/releases (Windows 10 or 11, game installed through Steam).
+Download Obsidian Mod Manager from github.com/Alomare/ObsidianLauncher/releases (Windows 10 or 11, game installed through Steam).
 
 1. Drop the mod folder (or a `.zip`) on the Mods tab, or press **+**.
 2. Turn the mod on.

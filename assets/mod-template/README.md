@@ -1,6 +1,6 @@
 # Mod Name
 
-A mod for HELLDIVERS (2015), for [Obsidian Mod Manager](https://github.com/Alomare/ObsidianModManager).
+A mod for HELLDIVERS (2015), for [Obsidian Mod Manager](https://github.com/Alomare/ObsidianLauncher).
 
 ## What it does
 

@@ -1,14 +1,14 @@
 # Engine and game-side knowledge
 
-How HELLDIVERS (2015) is built, where the game's Lua lives, how to find the function to hook, and the traps that crash the game or get a player cut off. Facts come from reading the retail scripts of Steam build 6001293 and from live tests. Statements marked **(inferred)** are conclusions from reading, not confirmed in a running game.
+How HELLDIVERS (2015) is built, where the Lua code of the game lives, how to find the function to hook, and the traps that crash the game or get a player cut off. Facts come from reading the retail scripts of Steam build 6001293 and from live tests. Statements marked **(inferred)** are conclusions from reading, not confirmed in a running game.
 
-Public references: [Obsidian Mod Manager](https://github.com/Alomare/ObsidianModManager) and [Obsidian API](https://github.com/Alomare/ObsidianAPI) (the `REFERENCE.md` there documents every call).
+Public references: [Obsidian Mod Manager](https://github.com/Alomare/ObsidianLauncher) and [Obsidian API](https://github.com/Alomare/ObsidianAPI) (the `REFERENCE.md` there documents every call).
 
 ## Contents
 
 1. [The engine and the scripts](#1-the-engine-and-the-scripts)
 2. [How code gets into the game](#2-how-code-gets-into-the-game)
-3. [Making your own lift of the scripts](#3-making-your-own-lift-of-the-scripts)
+3. [Making a lift of the scripts](#3-making-a-lift-of-the-scripts)
 4. [Layout of the scripts](#4-layout-of-the-scripts)
 5. [Language and global environment](#5-language-and-global-environment)
 6. [Game states and screens](#6-game-states-and-screens)
@@ -34,7 +34,7 @@ Public references: [Obsidian Mod Manager](https://github.com/Alomare/ObsidianMod
 | Bundle `9cf71054ea26dddf` | Boot and foundation: 165 scripts. Loads first and never unloads. |
 | Debug console | Retail ships a dormant `DebugConsole`. Some console commands exist in `StateGame` and work when called from Lua. |
 
-Resource names are hashed with 64-bit MurmurHash (variant 64A, seed 0) over the path string, for example `lua/hud/hud`. A bundle holds entries of (type hash, name hash, data). The type hash is the hash of the type word (`lua`, `unit`, `texture`, `material`, `package`, `level`, `font`, and so on). A Lua resource is an 8-byte header (length, kind) followed by the bytecode. Names are not stored: recover them by hashing path-like strings found inside the bundles and matching. Scripts whose path never appears as a string stay unnamed and show as `#<16 hex digits>`.
+Resource names are hashed with 64-bit MurmurHash (variant 64A, seed 0) over the path string, for example `lua/hud/hud`. A bundle holds entries of (type hash, name hash, data). The type hash is the hash of the type word (`lua`, `unit`, `texture`, `material`, `package`, `level`, `font`, and so on). A Lua resource is an 8-byte header (length, kind) followed by the bytecode. Names are not stored: recover them by hashing path-like strings found inside the bundles and matching. Scripts with a path that never appears as a string stay unnamed and show as `#<16 hex digits>`.
 
 ## 2. How code gets into the game
 
@@ -43,17 +43,17 @@ The engine probes `<bundle>.patch_0`, `<bundle>.patch_1`, and so on, next to eac
 - Probing stops at the first gap. If `patch_0` is missing, `patch_1` is never read.
 - The highest patch number wins for a resource that exists in several.
 - A patch can add resources that the base bundle never had (for example a new Lua script under `mods/yourname/main`).
-- Mods never edit the game's own files. Obsidian writes the patches at deploy and removes them on purge.
+- Mods never edit the original game files. Obsidian writes the patches at deploy and removes them on purge.
 
 A new script is reached by `require("mods/...")` once some existing script has been replaced to call it. The manager replaces a small boot script, which loads the loader, which runs mods. See the Obsidian wiki for the mod format.
 
 Resources other than Lua (textures, fonts, materials) are replaced the same way. Replaced resources load when the game starts, so changing them needs a redeploy. Art for UI goes into the boot bundle because that bundle loads before anything runs and never unloads.
 
-## 3. Making your own lift of the scripts
+## 3. Making a lift of the scripts
 
-You cannot read the game's Lua directly, and the decompiled scripts are not distributed. Build a reading copy once per game build. Three steps:
+You cannot read the game Lua directly, and the decompiled scripts are not distributed. Build a reading copy once per game build. Three steps:
 
-1. **Read the bundles.** Bundles are chunked: a 12-byte header (version `0xF0000004`, total size, unknown), then chunks of up to 0x10000 bytes, each prefixed by a 4-byte length. A chunk whose length equals 0x10000 is stored raw, otherwise it is zlib. After decompression: entry count, a 256-byte property block, a table of (type, name) pairs, then per entry a record with version headers and the data.
+1. **Read the bundles.** Bundles are chunked: a 12-byte header (version `0xF0000004`, total size, unknown), then chunks of up to 0x10000 bytes, each prefixed by a 4-byte length. A chunk with a length of exactly 0x10000 is stored raw; any other chunk is zlib. After decompression: entry count, a 256-byte property block, a table of (type, name) pairs, then per entry a record with version headers and the data.
 2. **Dump the Lua resources** of the two script bundles to `.ljbc` files named by path (use the name table from section 1), unnamed ones by hash.
 3. **Lift the bytecode to pseudo-Lua.** Write a LuaJIT 2.0 bytecode reader (dump version 1) and print each prototype as source: registers folded into expressions, `self.f(self, x)` printed as `self:f(x)`, numeric and generic `for` loops rebuilt, other control flow left as labels and `goto`. Also write an index of every named function (`file: function Class.method(args)`) so you can grep it.
 
@@ -99,7 +99,7 @@ lua/
 gameobjects/         one script per replicated game object (airstrike_01, ...)
 gameobjects_spec/    level object specs
 foundation/lua/      base (class), component, network, util, gui, world ...
-#<hash>.lua          scripts whose name could not be recovered
+#<hash>.lua          scripts with names that could not be recovered
 ```
 
 Notes:
@@ -157,9 +157,9 @@ Gui facts for UI mods:
 
 - A `Gui` is made on a world. Each state has a separate world, so a gui outlives a state change only if it is made on a world that does.
 - A gui that lists a material not loaded on this screen can stop the game. For example `menu/menu` is loaded only on the ship.
-- Gui coordinates are DPI-virtualized. Lay out in a fixed virtual space (for example 1920x1080) and scale by the window and the player's UI scale. Every state calls `viewport:limit_aspect_ratio(GameSettings.min_aspect_ratio, GameSettings.max_aspect_ratio)`, which letterboxes wide screens.
+- Gui coordinates are DPI-virtualized. Lay out in a fixed virtual space (for example 1920x1080) and scale by the window and the UI scale setting. Every state calls `viewport:limit_aspect_ratio(GameSettings.min_aspect_ratio, GameSettings.max_aspect_ratio)`, which letterboxes wide screens.
 - The game tests the mouse against where it would have drawn each element. A mod that redraws a screen has to map the positions of the elements it draws to the rectangles the game tests, or clicks land on the wrong thing.
-- A mod that replaces what a screen draws should still let the screen's `update` run. The update holds input handling, network sync and writes to the save. Cut only the drawing.
+- A mod that replaces what a screen draws should still let the `update` of that screen run. The update holds input handling, network sync and writes to the save. Cut only the drawing.
 
 ## 7. Entities, components, master and slave
 
@@ -176,14 +176,14 @@ Rules that follow:
 
 - AI, damage resolution and ammo run on the master. A change made on a non-owner does nothing to the master.
 - State access: `EntityAux.state(unit, component)` is the slave state. `EntityAux.state_master(unit, component)` is the master state, available on the owner only.
-- Commands: `EntityAux.queue_command_master(unit, component, command, ...)` asserts if this machine does not own the unit. `EntityAux.queue_command(...)` picks master or slave. A command name that the component's `command_master` does not know stops the game, outside any `pcall`.
+- Commands: `EntityAux.queue_command_master(unit, component, command, ...)` asserts if this machine does not own the unit. `EntityAux.queue_command(...)` picks master or slave. A command name unknown to the `command_master` of the component stops the game, outside any `pcall`.
 - Lists: `entity_manager:get_master_entities(name)` and `get_slave_entities(name)` return unit-to-state maps. `all_masters_iterator(name)` and `all_slaves_iterator(name)` iterate them. There is no `get_entities_with_component`. Check `Unit.alive` before use because the lists can hold units already gone.
-- Ownership moves. `BaseComponent.migrated_to_me` runs `setup_master` again on the new owner, with that owner's settings. Enemies are spread across peers (`EncounterManager.get_spawner_peer`), so in co-op the host does not own every enemy and host-only edits miss client-owned ones.
+- Ownership moves. `BaseComponent.migrated_to_me` runs `setup_master` again on the new owner, with the settings of that owner. Enemies are spread across peers (`EncounterManager.get_spawner_peer`), so in co-op the host does not own every enemy and host-only edits miss client-owned ones.
 - Replicated fields live on game objects (section 9). Fields marked local, such as `alive_time`, do not replicate.
 - Settings are per machine. An edit to a settings table affects that peer only. For stats that must agree in co-op, every player needs the same edit.
 - Functions named `rpc_*` on components and states are the receiving side of a network message.
 
-Spawning: `entity_spawner:spawn_entity(path, position, rotation, nil, setup_info)` spawns a replicated game object. `setup_info` is handed to each component's `setup_master`. Pickups, crates and vehicles accept `nil` or `{}`. `entity_spawner:despawn_entity(unit)` only marks the unit, which dies at the next `pre_update` or `post_update`, so despawning inside a loop is safe. For a real stratagem drop, go through `StratagemComponent`, which picks the hellpod and the `setup_info`.
+Spawning: `entity_spawner:spawn_entity(path, position, rotation, nil, setup_info)` spawns a replicated game object. `setup_info` is handed to the `setup_master` of each component. Pickups, crates and vehicles accept `nil` or `{}`. `entity_spawner:despawn_entity(unit)` only marks the unit, which dies at the next `pre_update` or `post_update`, so despawning inside a loop is safe. For a real stratagem drop, go through `StratagemComponent`, which picks the hellpod and the `setup_info`.
 
 ## 8. Settings tables
 
@@ -192,7 +192,7 @@ Gameplay numbers live in tables under `lua/settings/`, `require`d once and share
 | Table | Holds |
 |---|---|
 | `LoadoutSettings` | Stratagems (`name`, `combo`, `cooldown_time`, `activation_time`, `num_uses`, `unit`, `upgrades[]`), weapons, perks, slot counts (`nr_of_stratagem_slots` is 8, the first 4 are static). |
-| `PerkSettings` | Perk definitions and their setup and remove functions. |
+| `PerkSettings` | Perk definitions, with the setup and remove functions of each perk. |
 | `GameSettings` | Global caps (`MAX_NUM_ALLOWED_ENEMIES`, aspect ratios). |
 | `StatusTemplateSettings` | Status effects (stun, slow). |
 | `EncounterSettings*`, `PatrolSettings`, difficulty settings | Waves, patrols and difficulty curves. |
@@ -225,21 +225,21 @@ Traps:
 
 `lua/settings/network_object_settings.lua` and `lua/generated/network_object_types.lua` bind objects to types.
 
-These are hard limits. A Lua mod cannot change them, because both sides must agree and the widths are fixed in the game's data.
+These are hard limits. A Lua mod cannot change them, because both sides must agree and the widths are fixed in the game data.
 
 | Limit | Consequence |
 |---|---|
 | `uint4` slot in `rpc_stratagem_info` | At most 16 values for that field. |
 | `uint7` and `uint10` ids | An id above 127 or 1023 does not fit. |
 | Lobby `player_menu` has only `stratagem5..8_index` | The lobby syncs four chosen stratagem slots beyond the static four. |
-| Unknown rpc name or a wrong parameter list | An error inside the game's network code. |
+| Unknown rpc name or a wrong parameter list | An error inside the game network code. |
 
 Design rules:
 
 - Before designing anything that syncs, read the message types and the object fields. If the value does not fit, keep it local (a client mod) or derive it on every machine from data that does sync.
 - A custom stratagem is always the base stratagem it was built from on the network. Whatever it calls down has to be a unit that every game has.
-- Anything only one machine knows (an edited table, a unit that is not a replicated game object) is invisible to the others. Spawning a unit whose package other peers have not loaded can crash them.
-- Vanilla rpcs such as `rpc_spawn_enemy_unit_request` and `rpc_set_hitpoints_request` check ownership but not authority. Do not use them against other players' sessions.
+- Anything only one machine knows (an edited table, a unit that is not a replicated game object) is invisible to the others. Spawning a unit from a package other peers have not loaded can crash them.
+- Vanilla rpcs such as `rpc_spawn_enemy_unit_request` and `rpc_set_hitpoints_request` check ownership but not authority. Do not use them against the sessions of other players.
 - XP, rank and mission stats reach the shared backend through `CampaignManager` entry points (`upload_mission_stats`, `upload_leaderboard_stats`, `complete_planets`, and others). Obsidian blocks these while session mods run. Do not design a mod that changes them.
 
 ## 10. Protected keys
@@ -258,22 +258,22 @@ Components register protected keys. `BaseComponent.set_protected` stores a salte
 
 Not protected: launcher, beam, arc and melee ammo; shield; `sprint_stamina`; `max_hitpoints`; `slow_*` fields.
 
-Rule: write a protected key only through the game's own command (for example `EntityAux.queue_command_master(unit, "health", "set_hitpoints", n)`, the inventory cooldown commands, `set_extra_lives`) or through `api.game.protected` in Obsidian API. Never assign `state.hitpoints_real = n`.
+Rule: write a protected key only through the matching game command (for example `EntityAux.queue_command_master(unit, "health", "set_hitpoints", n)`, the inventory cooldown commands, `set_extra_lives`) or through `api.game.protected` in Obsidian API. Never assign `state.hitpoints_real = n`.
 
 A timer that the game runs while it is above zero never finishes at 0 (a hellpod `drop_time`). Use 0.01.
 
 ## 11. How to find what to hook
 
-A repeatable method. Run it on your own lift.
+A repeatable method, to run on a lift you built.
 
-1. **Start from something the player sees or a name in the game.** Search the lifted scripts for a string: a stratagem name, a button label, an rpc name, a settings key, a message. Use the function index to list a class's methods.
-2. **Find the class and the method.** Hooks attach to a class table and a method name (`MenuScreenLoadout.update`, `HealthComponent.do_damage`). Confirm the table is a global or a required module that exists when your mod loads. Functions called through locals (`local function begin_x()`) cannot be hooked: hook the public caller. Example: the `begin_*` upload functions are reached through locals, so hooking them never fires, while the public `CampaignManager.upload_mission_stats` does.
+1. **Start from something the player sees or a name in the game.** Search the lifted scripts for a string: a stratagem name, a button label, an rpc name, a settings key, a message. Use the function index to list the methods of a class.
+2. **Find the class and the method.** Hooks attach to a class table and a method name (`MenuScreenLoadout.update`, `HealthComponent.do_damage`). Confirm the table is a global or a required module that exists when the mod loads. Functions called through locals (`local function begin_x()`) cannot be hooked: hook the public caller. Example: the `begin_*` upload functions are reached through locals, so hooking them never fires, while the public `CampaignManager.upload_mission_stats` does.
 3. **Read both halves.** For a component, read `setup_master`, `update_masters`, `command_master` and the slave counterparts. A change must go where the data is read, on the machine that reads it.
 4. **Check who calls it, and on which machine.** Grep for the method name across all scripts. Note whether the caller runs on the owner, the host or every peer. Host-only code (encounters, objectives, mission end) does nothing on a client.
 5. **Confirm which table the game reads back, not only which one it writes.** A screen may build a list in one place and read another. `MenuScreenLoadout` builds from `self.parent.players[slot].available_items` but reads `self.option_menus[slot]`, so editing the first changes nothing. Grep for every read of the field you plan to change.
 6. **Check the network types** for any value that has to sync (section 9) before you write code.
 7. **Look for a guard.** Search the same function for `check_protected`, `set_protected`, asserts and `Unit.alive`. A guard shows which writes the game defends.
-8. **Look for an existing path.** The game's tutorial and debug commands often do what you need (the tutorial pauses components and forces a loadout with `loadout_override`). Reusing the game's own call is safer than writing state.
+8. **Look for an existing path.** The tutorial and debug commands in the game often do what you need (the tutorial pauses components and forces a loadout with `loadout_override`). Reusing a call the game already makes is safer than writing state.
 9. **Test in the game.** Static reading gives medium confidence at best. Log from the hook first (`obsidian.log`), watch the call order, then change behaviour.
 
 Search aids:
@@ -283,18 +283,18 @@ Search aids:
 | An rpc sender or receiver | The rpc name, and the same name in `generated/network_messages`. |
 | A tunable number | The field name in `lua/settings/`, then every file that reads it. |
 | A screen | `menu_screen_<name>` and the `setup_*` and `update` methods of the class. |
-| A component command | `command_master` in that component's file; the table of names is the full list. |
-| A game object's fields | `game_object_fields_lookup` by object name. |
+| A component command | `command_master` in the component file; the table of names is the full list. |
+| The fields of a game object | `game_object_fields_lookup` by object name. |
 | A unit path | `generated/unit_paths` and `units_with_settings`. |
 | What a hash-named script is | The class name in the function index (`Class.method`). |
 
 ## 12. Hooking in practice
 
-Obsidian exposes `obsidian.hook(target, method, fn)` and `obsidian.on_require(name, fn)`. Behaviour of the loader's hook, from the loader source:
+Obsidian exposes `obsidian.hook(target, method, fn)` and `obsidian.on_require(name, fn)`. Behaviour of the loader hook, from the loader source:
 
 - `target` is a table or a global name. If the class or method does not exist yet, the hook waits and installs when it does.
-- `fn` receives the original function first, then the call arguments. Call the original to keep the game's behaviour.
-- If the hook throws before calling the original, the loader calls the original for you. If it throws after the original ran, the loader returns the original's results and does not run it again, so a spawn or a save never happens twice.
+- `fn` receives the original function first, then the call arguments. Call the original to keep vanilla behaviour.
+- If the hook throws before calling the original, the loader calls the original for you. If it throws after the original ran, the loader returns the results of the original and does not run it again, so a spawn or a save never happens twice.
 - Session mods are gated: while the lobby is not cleared, the hook calls the original untouched. Client mods are not gated.
 - `obsidian.on_require(name, fn)` runs `fn(module)` when the game first requires a script, for example `settings/game_settings`. It is the place to patch settings tables once they load.
 - Use `obsidian.on_frame` for per-frame work. The loader runs each callback under `pcall`.
@@ -318,20 +318,20 @@ Known hook points (build 6001293):
 
 Crashes and freezes:
 
-- **A Lua error in a game update freezes the game** and writes a CRASH file. Wrap your own code in `pcall`.
-- **An unknown queued command name stops the game** inside the game's update, where no `pcall` reaches. Add a command to your list only after reading that component's `command_master`.
-- **Spawning a unit whose package is not loaded stops the game.** Weapon units are not loaded on the ship: spawning one there kills the process.
+- **A Lua error in a game update freezes the game** and writes a CRASH file. Wrap mod code in `pcall`.
+- **An unknown queued command name stops the game** inside the game update, where no `pcall` reaches. Add a command to the list the mod queues only after reading the `command_master` of that component.
+- **Spawning a unit from a package that is not loaded stops the game.** Weapon units are not loaded on the ship: spawning one there kills the process.
 - **A wrong type in an input table** (a boolean `fire_button` where a number is expected) errors inside `input_component.lua`. Take field types from `ControllerSettings`.
 - **A made-up pad number** crashes the input code. A bare unit with no pad (nil) stands still.
 - **A gui that lists an unloaded material** can stop the game (`menu/menu` outside the ship).
-- **Sound worlds die with their screen.** Asking a gone world about a sound id took the game down in testing. Keep a sound id only for the screen that made it.
+- **Sound worlds die with the screen.** Asking a gone world about a sound id took the game down in testing. Keep a sound id only for the screen that made it.
 - **A status command on a non-owned unit** can error, because `filter_slave_command` reads an undefined global. Use a zero-damage hit, which is the path weapons use.
-- **Camera particles** may be loaded only for their own biome. Spawning an unloaded particle can crash **(inferred)**.
+- **Camera particles** may be loaded only on the biome they belong to. Spawning an unloaded particle can crash **(inferred)**.
 - Fortify objectives call `time_keeper:set_paused` without a check. A fortify mission started with no proving-grounds seed can crash **(inferred)**.
 - **`Window.set_cursor()` with no argument** reads through a null pointer inside the executable and crashes past any `pcall`. `Window.set_cursor("")` falls back to the system arrow.
-- **Temp tables of paused components.** A paused component keeps queued commands whose data sits in `TempTableFactory` tables the game takes back at the end of the frame. Copy them before holding a command across frames (Obsidian API 1.5.1 does this for `freeze`).
+- **Temp tables of paused components.** A paused component keeps queued commands with data in `TempTableFactory` tables, which the game takes back at the end of the frame. Copy them before holding a command across frames (Obsidian API 1.5.1 does this for `freeze`).
 - **A current planet with no region** stops the ship, modded or not. `available_planets` holds raw planets without regions; the planet screen builds the real ones in `setup_planets`.
-- The engine has no `Application.can_get`: a mod can't ask whether a unit's package is loaded before spawning it.
+- The engine has no `Application.can_get`: a mod can't ask whether the package of a unit is loaded before spawning it.
 
 Silent failures and wrong results:
 
@@ -339,12 +339,12 @@ Silent failures and wrong results:
 - **Settings patched too late, or at one level.** See section 8.
 - **Vectors stored across frames** read as NaN.
 - **Strict globals.** A bare read of a global that does not exist raises an error.
-- **Perk swaps** skip the old perk's `remove_master` and `remove_slave`, so old effects stay on **(inferred from reading)**.
+- **Perk swaps** skip `remove_master` and `remove_slave` of the old perk, so old effects stay on **(inferred from reading)**.
 - **Shared state edited on one peer** desyncs or gets overwritten when ownership migrates.
 - **`type()` of a game vector is `"vector3"`**, not `"userdata"`. Recognise a position by the fields it carries.
-- **`_G.TIME_SCALE` doesn't slow the game.** It scales `GAME_DT` for the scripts; engine animation and movement keep their pace. Pause through Obsidian API `world.time_scale` instead.
+- **`_G.TIME_SCALE` doesn't slow the game.** It scales `GAME_DT` for the scripts; engine animation and movement keep the normal pace. Pause through Obsidian API `world.time_scale` instead.
 - **Explosion hits arrive later.** An explosion sends the hits from a physics overlap that the engine answers on a later step, after the call returned (`SpawnManager` waits the same way: `waiting_for_overlap`). Filter hits where the answer lands.
-- **Weapon hit tests keep their settings.** A weapon's state points at settings shared by the weapon type, and the raycast keeps the settings it was made with. A private copy needs `remake_raycast` (`api.gear.tune` does it).
+- **Weapon hit tests keep the original settings.** The state of a weapon points at settings shared by the weapon type, and the raycast keeps the settings it was made with. A private copy needs `remake_raycast` (`api.gear.tune` does it).
 
 Save and backend:
 
@@ -356,9 +356,9 @@ Save and backend:
 Galactic War backend, for mods that touch the campaign (from reading `CampaignManager` and a probe against a local stub server):
 
 - The server sends war points, front statuses, defend and attack events, statistics and Proving Grounds seeds. Planets, missions, environments and rewards are rolled on the client from the region (`generate_planets`), and hosts send them to peers. A mod changes those on every machine, not on a server.
-- The lobby browser filters rooms by `campaign_season` equal to the player's season.
-- A defend event moves the front's planets to the event region, and mission end reports a planet only when that region matches the points' region. During an event, normal missions on that front report no planet.
+- The lobby browser filters rooms by `campaign_season` equal to the season of the player.
+- A defend event moves the planets of the front to the event region, and mission end reports a planet only when that region matches the region of the points. During an event, normal missions on that front report no planet.
 - `campaign_cache` lives in the save, so anything that switches wars or seasons should also switch the save (`SaveManager.setup` can be pointed at another save name).
-- Write no mod that sends results to the official server outside the game's own flow, and never redirect the game's backend for other players.
+- Write no mod that sends results to the official server outside the normal game flow, and never redirect the game backend for other players.
 
-Scope reminder: a mod that only reads game tables and draws locally can be a client mod and works with players who do not have it. A mod that changes shared game state must be a session mod, and only runs while everyone in the lobby has agreed (Obsidian's scopes documentation has the rules).
+Scope reminder: a mod that only reads game tables and draws locally can be a client mod and works with players who do not have it. A mod that changes shared game state must be a session mod, and only runs while everyone in the lobby has agreed (the Obsidian scopes documentation has the rules).
