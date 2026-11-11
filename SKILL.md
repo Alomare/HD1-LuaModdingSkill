@@ -48,7 +48,7 @@ Read only what the task needs.
 - A custom stratagem (or other custom entry) travels over the network as the vanilla entry it is based on. Other machines can't tell the two apart unless every player runs the mod and the mod tells them.
 - Session hooks stop in a lobby that isn't cleared. Global tables a mod replaces directly keep the changes there, so undo them in `obsidian.on_session`. A value changed only while one game call runs, and put back right after, needs no undo (`references/gameplay.md` section 5).
 - The camera frustum decides patrol alarms, spawns, the squad leash and more. A camera mod that changes the frustum changes gameplay (`references/gameplay.md` section 1).
-- A mod with personal pieces and gameplay pieces can declare parts (Obsidian 1.5.0), so the personal pieces keep running in public lobbies (`references/obsidian-mods.md` section 5).
+- A mod with personal pieces and gameplay pieces can declare parts (Obsidian 2.0.0), so the personal pieces keep running in public lobbies (`references/obsidian-mods.md` section 5).
 - A Lua error inside a game update freezes the game. Guard hooks that run every frame.
 - Hiding something from a menu has three parts: the list the screen draws, the default data the game falls back to, and the data in the save. Missing one leaves the item reachable.
 - Spawning a unit from a package that isn't loaded stops the game, and the engine can't be asked first. Spawn only units known to be loaded where the code runs.

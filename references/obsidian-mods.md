@@ -76,9 +76,9 @@ Obsidian checks it on import and names the field that is wrong. Unknown fields a
 | `resources` | no | Game files to replace or add (below). |
 | `options` | no | Settings players change in the app (below). |
 | `keybinds` | no | Keys players can rebind. |
-| `parts` | no | Pieces of a session mod, each `client` or `session` (below). Obsidian 1.5.0. Not for libraries or expansions. |
-| `option_groups` | no | Headings that fold, to sort the options under (below). Obsidian 1.5.0. |
-| `option_previews` | no | Pictures of option values drawn from SVG templates (below). Obsidian 1.5.0. |
+| `parts` | no | Pieces of a session mod, each `client` or `session` (below). Obsidian 2.0.0. Not for libraries or expansions. |
+| `option_groups` | no | Headings that fold, to sort the options under (below). Obsidian 2.0.0. |
+| `option_previews` | no | Pictures of option values drawn from SVG templates (below). Obsidian 2.0.0. |
 | `loader_api` | no | Loader API version needed. `1` when left out. A loader with a lower version refuses the mod. |
 | `min_obsidian` | no | Oldest Obsidian that works, such as `"1.2.0"`. Older ones refuse the mod. Obsidian before 1.1 ignores it. |
 | `load` | no | Load order request: `"first"`, `"last"`, or an object with `position`, `before`, `after`, `before_patches`, `after_patches`. Obsidian 1.3.1 and earlier read only `"last"`. |
@@ -137,7 +137,7 @@ Each entry replaces or adds a game resource. `type` and `name` are the game path
 | `variants`, `clips` | Per-language variants, single clips of a sound bank |
 | `bundle` | 16 hex digits. Required except with `clips`. |
 | `when` | Options that must have these values for the entry to be used. Changing such an option needs a new deploy. |
-| `part` | The part the entry belongs to (Obsidian 1.5.0). An entry of a part that is off isn't deployed. |
+| `part` | The part the entry belongs to (Obsidian 2.0.0). An entry of a part that is off isn't deployed. |
 
 The boot bundle is `9cf71054ea26dddf`. UI art, fonts and materials a gui draws must be in it: a gui that lists a material that is not loaded can stop the game. The example mods put an icon texture and material there:
 
@@ -152,7 +152,7 @@ Prefer hooks over replacing whole game scripts: a hook changes one function, so 
 
 ### parts
 
-Obsidian 1.5.0. Splits a session mod into pieces, so the personal pieces keep running in a public lobby where the gameplay pieces switch off (rules in section 5).
+Obsidian 2.0.0. Splits a session mod into pieces, so the personal pieces keep running in a public lobby where the gameplay pieces switch off (rules in section 5).
 
 ```json
 "scope": "session",
@@ -169,7 +169,7 @@ Obsidian 1.5.0. Splits a session mod into pieces, so the personal pieces keep ru
 
 ### option_groups and option_previews
 
-Obsidian 1.5.0. Older versions ignore both and list the options as before.
+Obsidian 2.0.0. Older versions ignore both and list the options as before.
 
 ```json
 "option_groups": [
@@ -244,12 +244,12 @@ All calls are on the global `obsidian`. `obsidian.version` is `1`. `obsidian.cap
 | `obsidian.hook(target, method, fn)` | Wraps a game function. `target` is a table or the name of a global table. `fn(original, self, ...)` gets the original first. Waits if the global is not defined yet. If `fn` errors, the original runs. **Session-gated** (below). |
 | `obsidian.wrap(target, method, fn)` | The same, but **always runs**, also in an uncleared lobby and outside expansion content. For the way into an expansion, or a mod with replaced files that cannot be switched off. Anything else uses `hook`. |
 | `obsidian.on_require(name, fn)` | Calls `fn(module)` when the game loads the script `name` (`"lua/settings/perk_settings"`). Use it to adjust a settings table right after the game builds it. |
-| `obsidian.on_frame(fn, opts)` | Calls `fn` every frame. Return `true` to stop. Session mods: frames run only in a cleared lobby. `opts.always` (Obsidian 1.5.0) runs `fn` in any lobby, for work only this player sees; an older loader ignores it and gates the frame. |
+| `obsidian.on_frame(fn, opts)` | Calls `fn` every frame. Return `true` to stop. Session mods: frames run only in a cleared lobby. `opts.always` (Obsidian 2.0.0) runs `fn` in any lobby, for work only this player sees; an older loader ignores it and gates the frame. |
 | `obsidian.after_startup(fn)` | Calls `fn` once every mod has started. |
 | `obsidian.keybind(id, fn, opts)` | Calls `fn` each time the key goes down. Session mod keys wait for a cleared lobby. `opts.always` leaves the key alone, for keys that act only on the screen of this player. |
 | `obsidian.on_session(fn, opts)` | Calls `fn(on)` when the loader switches this mod on or off. Undo lasting changes when `on` is `false`. |
 
-`obsidian.hook`, `on_frame`, `keybind` and `on_session` take `opts.part` (Obsidian 1.5.0) in a mod with parts: the registration belongs to that part (section 5).
+`obsidian.hook`, `on_frame`, `keybind` and `on_session` take `opts.part` (Obsidian 2.0.0) in a mod with parts: the registration belongs to that part (section 5).
 
 ```lua
 obsidian.hook("Damage", "apply", function(original, target, amount, ...)
@@ -280,7 +280,7 @@ end)
 |---|---|
 | `obsidian.module(name)`, `obsidian.import(id)` | See section 3. |
 | `obsidian.info(id)` | `{ id, name, version, scope }` for a running mod, `nil` if it is not running. No `id` means the calling mod. Use `info("obsidian.api").version` for version gates. |
-| `obsidian.scope()` | How the calling mod runs this deploy: `"client"`, `"session"`, `"hybrid"` (a client part and a session part on, Obsidian 1.5.0) or `"expansion"`. |
+| `obsidian.scope()` | How the calling mod runs this deploy: `"client"`, `"session"`, `"hybrid"` (a client part and a session part on, Obsidian 2.0.0) or `"expansion"`. |
 | `obsidian.caller()` | Id of the mod that the running code belongs to. |
 | `obsidian.session.cleared(part)` | `true` while the calling mod may run. With a part id: always `true` for a client part, `false` for a part that is off. |
 | `obsidian.session.guard(t, free)` | A view of table `t` for other mods. Functions named in `free` work normally. All others answer `false, "needs_session"` for client callers and `false, "not_cleared"` when not cleared (for libraries). |
@@ -341,7 +341,7 @@ Any deployed session content stops Galactic War and leaderboard results being se
 
 ### Mods with parts
 
-Obsidian 1.5.0. A session mod with `parts` (section 2) tags each registration with the part it belongs to:
+Obsidian 2.0.0. A session mod with `parts` (section 2) tags each registration with the part it belongs to:
 
 ```lua
 local VIEW = { part = "view" }

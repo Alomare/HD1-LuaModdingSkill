@@ -25,7 +25,7 @@ Details are in `obsidian-mods.md`. In short:
 - `session` scope: runs only in a cleared lobby, where every player runs the same session mods (or opted in). In a lobby that isn't cleared, hooks and `on_frame` stop and custom content falls back to the vanilla content it is based on. Design for that: nothing may error, and players without the mod must see a normal game.
 - `every_player: true`: the mod runs only if every player runs it, at the same version and with the same shared option values. Use it when partial support would confuse players.
 - Option values of a session mod are compared between players unless the option is marked client scope.
-- `parts` (Obsidian 1.5.0): a session mod can keep personal pieces, such as a camera, running in a lobby that isn't cleared, while the gameplay pieces switch off (`obsidian-mods.md` section 5).
+- `parts` (Obsidian 2.0.0): a session mod can keep personal pieces, such as a camera, running in a lobby that isn't cleared, while the gameplay pieces switch off (`obsidian-mods.md` section 5).
 - A change made only while one game call runs leaves nothing to undo when the mod switches off (`gameplay.md` section 5).
 
 ## 3. Channels for sending data
