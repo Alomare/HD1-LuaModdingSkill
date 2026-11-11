@@ -1,0 +1,31 @@
+# The offline tests of an Obsidian mod, shared by every mod repository. A mod calls it on each push:
+#
+#   name: Tests
+#   on:
+#     push:
+#       branches: [dev, main]
+#     pull_request:
+#   jobs:
+#     tests:
+#       uses: Alomare/HD1-LuaModdingSkill/.github/workflows/mod-tests.yml@main
+#
+# It runs tests/run.lua with LuaJIT from the root of the repository that called it, the way the
+# release workflow does before it publishes, so a break shows on the day it lands.
+name: Mod tests
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tests
+        run: |
+          [ -f tests/run.lua ] || { echo "::error::no tests/run.lua in this mod"; exit 1; }
+          sudo apt-get install -y -qq luajit >/dev/null
+          luajit tests/run.lua
