@@ -1,0 +1,126 @@
+# The release of an Obsidian mod, shared by every mod repository: one place to fix, instead of a copy
+# in each. A mod calls it from a small workflow of its own:
+#
+#   name: Release
+#   on:
+#     push:
+#       tags: ["v*"]
+#   permissions:
+#     contents: write
+#   jobs:
+#     release:
+#       uses: Alomare/HD1-LuaModdingSkill/.github/workflows/mod-release.yml@main
+#
+# What it does, in the repository that called it, at the tag that was pushed:
+#   1. The tag has to match "version" in obsidian.json.
+#   2. The release notes are the version's changelog: the "## <version>" section of CHANGELOG.md, or
+#      the file docs/releases/<version>.md (input `changelog`). It stops when there is none, or when
+#      the text breaks the rules for public text: a list with one change per line, no em or en
+#      dashes, no "its", no first or second person.
+#   3. The mod's tests run when it has tests/run.lua (LuaJIT).
+#   4. `check`, when given, runs as one more command (a generated file that must be current, a lint).
+#   5. The zip is `git archive` of the tag under one <id>/ folder, so export-ignore in .gitattributes
+#      decides what a player gets. It is published as <id>-<version>.zip, the name Obsidian looks for.
+#
+# A tag with a suffix (v1.2.0-beta.1) makes a prerelease, which Obsidian does not offer.
+# Outputs `zip` and `version`, for a job that runs after it (an upload to Nexus Mods).
+name: Mod release
+
+on:
+  workflow_call:
+    inputs:
+      changelog:
+        description: '"CHANGELOG.md" for a section per version, or "docs/releases" for a file per version'
+        type: string
+        default: CHANGELOG.md
+      check:
+        description: One more command that has to pass before the release
+        type: string
+        default: ""
+    outputs:
+      zip:
+        description: The name of the published zip
+        value: ${{ jobs.release.outputs.zip }}
+      version:
+        description: The version, without the v
+        value: ${{ jobs.release.outputs.version }}
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      zip: ${{ steps.pack.outputs.zip }}
+      version: ${{ steps.version.outputs.version }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CHANGELOG: ${{ inputs.changelog }}
+      CHECK: ${{ inputs.check }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The tag matches obsidian.json
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          have=$(jq -r .version obsidian.json)
+          [ "$have" = "$version" ] || { echo "::error::obsidian.json says $have, the tag says $GITHUB_REF_NAME"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: The changelog has this version and follows the rules for public text
+        run: |
+          if [ "$CHANGELOG" = "docs/releases" ]; then
+            [ -s "docs/releases/$VERSION.md" ] || { echo "::error::docs/releases/$VERSION.md is missing"; exit 1; }
+            cp "docs/releases/$VERSION.md" notes.md
+          else
+            awk -v h="## $VERSION" '$0 == h { on = 1; next } /^## / { on = 0 } on' "$CHANGELOG" | sed '/./,$!d' > notes.md
+            [ -s notes.md ] || { echo "::error::$CHANGELOG has no section for $VERSION"; exit 1; }
+          fi
+          python3 - notes.md <<'PY'
+          import re, sys
+          words = re.compile(r"\b(its|it's|i|me|my|we|our|us|you|your)\b", re.I)
+          problems = []
+          entries = [s.strip() for s in open(sys.argv[1], encoding="utf-8").read().replace("\r", "").split("\n") if s.strip()]
+          if not entries:
+              problems.append("the changelog is empty")
+          for s in entries:
+              if not s.startswith("- ") or len(s) < 3:
+                  problems.append(f'not a list entry (one change per line, starting with "- "): {s}')
+                  continue
+              body = re.sub(r"`[^`]*`", "", s[2:])  # code, such as an option id, is not prose
+              hit = words.search(body)
+              if hit:
+                  problems.append(f'"{hit.group(0)}" in: {s}')
+              if "—" in s or "–" in s:
+                  problems.append(f"a dash in: {s}")
+          for p in problems:
+              print(f"::error::{p}")
+          sys.exit(1 if problems else 0)
+          PY
+
+      - name: Tests
+        run: |
+          if [ -f tests/run.lua ]; then
+            sudo apt-get install -y -qq luajit >/dev/null
+            luajit tests/run.lua
+          else
+            echo "No tests/run.lua in this mod."
+          fi
+
+      - name: The check of the mod
+        if: ${{ inputs.check != '' }}
+        run: bash -c "$CHECK"
+
+      - name: Pack and publish
+        id: pack
+        run: |
+          id=$(jq -r .id obsidian.json)
+          zip="$id-$VERSION.zip"
+          git archive --format=zip --prefix="$id/" -o "$zip" "$GITHUB_SHA"
+          pre=""
+          [[ "$GITHUB_REF_NAME" == *-* ]] && pre="--prerelease"
+          gh release create "$GITHUB_REF_NAME" "$zip" --title "$(jq -r .name.en obsidian.json) $VERSION" --notes-file notes.md $pre
+          echo "zip=$zip" >> "$GITHUB_OUTPUT"
