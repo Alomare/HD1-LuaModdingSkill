@@ -519,7 +519,7 @@ A second workflow can upload the same zip to Nexus Mods after the GitHub release
 - The repository secret `NEXUS_API_KEY` holds a Nexus Mods API key. Stop the run with a message when the secret is missing, and never run the job with debug logging on: the action writes the key into the debug log, and the logs of a public repository are open to anyone.
 - `mod_id` is the Unique Mod ID from the Files tab (Advanced): the game id shifted left 32 bits plus the mod number. HELLDIVERS (2015) is game 3552, so mods/48 is 3552 << 32 | 48 = 15255723835440.
 - `file_id` is the File ID under API of the existing file. Each upload becomes a new version of that file, and `archive_existing_version: true` moves the old version to the archive.
-- The changelog section becomes the Nexus changelog, one change per line. Read the current title and description of the file from the Nexus API and send them back unchanged, so text edited on the page stays.
+- Send no changelog to Nexus: the release notes live on GitHub. Read the current title and description of the file from the Nexus API and send them back unchanged, so text edited on the page stays.
 - A page that carries more than one mod, such as the Enhanced Visuals page that also holds Upscaled Textures, should keep `update_mod_version: false`: the version of the page then stays as set by hand.
 - Skip prereleases, and allow a run by hand for a tag that's already out.
 
