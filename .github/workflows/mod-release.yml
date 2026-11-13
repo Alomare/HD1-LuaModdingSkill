@@ -13,10 +13,10 @@
 #
 # What it does, in the repository that called it, at the tag that was pushed:
 #   1. The tag has to match "version" in obsidian.json.
-#   2. The release notes are the version's changelog: the "## <version>" section of CHANGELOG.md, or
-#      the file docs/releases/<version>.md (input `changelog`). It stops when there is none, or when
-#      the text breaks the rules for public text: a list with one change per line, no em or en
-#      dashes, no "its", no first or second person.
+#   2. The release notes are the "## <version>" section of CHANGELOG.md. It stops when there is none,
+#      or when the text breaks the rules for public text: a list with one change per line, each
+#      starting "- New:", "- Changed:", "- Fixed:" or "- Removed:", no em or en dashes, no "its",
+#      no first or second person.
 #   3. The mod's tests run when it has tests/run.lua (LuaJIT).
 #   4. `check`, when given, runs as one more command (a generated file that must be current, a lint).
 #   5. The zip is `git archive` of the tag under one <id>/ folder, so export-ignore in .gitattributes
@@ -29,10 +29,6 @@ name: Mod release
 on:
   workflow_call:
     inputs:
-      changelog:
-        description: '"CHANGELOG.md" for a section per version, or "docs/releases" for a file per version'
-        type: string
-        default: CHANGELOG.md
       check:
         description: One more command that has to pass before the release
         type: string
@@ -56,7 +52,6 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     env:
       GH_TOKEN: ${{ github.token }}
-      CHANGELOG: ${{ inputs.changelog }}
       CHECK: ${{ inputs.check }}
     steps:
       - uses: actions/checkout@v4
@@ -72,23 +67,19 @@ jobs:
 
       - name: The changelog has this version and follows the rules for public text
         run: |
-          if [ "$CHANGELOG" = "docs/releases" ]; then
-            [ -s "docs/releases/$VERSION.md" ] || { echo "::error::docs/releases/$VERSION.md is missing"; exit 1; }
-            cp "docs/releases/$VERSION.md" notes.md
-          else
-            awk -v h="## $VERSION" '$0 == h { on = 1; next } /^## / { on = 0 } on' "$CHANGELOG" | sed '/./,$!d' > notes.md
-            [ -s notes.md ] || { echo "::error::$CHANGELOG has no section for $VERSION"; exit 1; }
-          fi
+          awk -v h="## $VERSION" '$0 == h { on = 1; next } /^## / { on = 0 } on' CHANGELOG.md | sed '/./,$!d' > notes.md
+          [ -s notes.md ] || { echo "::error::CHANGELOG.md has no section for $VERSION"; exit 1; }
           python3 - notes.md <<'PY'
           import re, sys
           words = re.compile(r"\b(its|it's|i|me|my|we|our|us|you|your)\b", re.I)
+          kinds = re.compile(r"^- (New|Changed|Fixed|Removed): \S")
           problems = []
           entries = [s.strip() for s in open(sys.argv[1], encoding="utf-8").read().replace("\r", "").split("\n") if s.strip()]
           if not entries:
               problems.append("the changelog is empty")
           for s in entries:
-              if not s.startswith("- ") or len(s) < 3:
-                  problems.append(f'not a list entry (one change per line, starting with "- "): {s}')
+              if not kinds.match(s):
+                  problems.append(f'not a list entry starting "- New:", "- Changed:", "- Fixed:" or "- Removed:": {s}')
                   continue
               body = re.sub(r"`[^`]*`", "", s[2:])  # code, such as an option id, is not prose
               hit = words.search(body)

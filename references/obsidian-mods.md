@@ -28,7 +28,8 @@ mod-id/
   src/*.lua            modules, loaded with obsidian.module
   res/                 game resources (textures, materials, replaced scripts)
   locales/en.json      text the mod shows in game (optional)
-  image.png            square picture, up to 4 MB (optional)
+  icon.jpg             square picture the manifest names, up to 4 MB (optional; icon.png for pixel art)
+  thumbnail.jpg        wide picture for pages such as Nexus, 16:9 (optional, not shipped)
   tests/ tools/        offline tests, build scripts (not shipped)
   CHANGELOG.md README.md LICENSE .gitattributes .gitignore
   .github/workflows/release.yml
@@ -40,9 +41,9 @@ Paths in `obsidian.json` are relative to the mod folder, with forward slashes.
 
 The zip is built by `git archive`, so `.gitattributes` decides what ships. `obsidian.json` must be at the top of the archive, or inside one folder at the top. The release workflow adds the folder `<id>/`.
 
-Ships: `obsidian.json`, `main.lua`, `src/`, `res/`, `locales/`, `image.png`, `LICENSE`.
+Ships: `obsidian.json`, `main.lua`, `src/`, `res/`, `locales/`, `icon.jpg`, `LICENSE`.
 
-Left out with `export-ignore`: `.github`, `.gitattributes`, `.gitignore`, `internal`, `README.md`, `CHANGELOG.md`, `CLAUDE.md`, `tests`, `tools`.
+Left out with `export-ignore`: `.github`, `.gitattributes`, `.gitignore`, `internal`, `README.md`, `CHANGELOG.md`, `CLAUDE.md`, `thumbnail.jpg`, `tests`, `tools`.
 
 ```
 * text=auto eol=lf
@@ -196,7 +197,7 @@ Obsidian 2.0.0. Older versions ignore both and list the options as before.
   "name": { "en": "Mod Name", "pt-BR": "Nome do Mod" },
   "description": { "en": "What the mod changes, and whether other players notice." },
   "authors": ["Author Name"],
-  "image": "image.png",
+  "image": "icon.jpg",
   "scope": "session",
   "every_player": false,
   "entry": "main.lua",
@@ -486,17 +487,18 @@ Tests prove the logic only. Hooks, frame order and game tables still need a run 
 
 ### Changelog
 
-`CHANGELOG.md` has a section per version, headed exactly `## <version>`. Each change is one line starting `New:`, `Changed:` or `Removed:`, brief and direct.
+`CHANGELOG.md` has a section per version, headed exactly `## <version>`. Each change is one list item starting `- New:`, `- Changed:`, `- Fixed:` or `- Removed:`, brief and direct. Plain lines without the `- ` would run together into one paragraph wherever the notes are shown as Markdown.
 
 ```
 ## 1.1.0
 
-New: ...
-Changed: ...
-Removed: ...
+- New: ...
+- Changed: ...
+- Fixed: ...
+- Removed: ...
 ```
 
-The section becomes the release notes. The workflow stops if the section is missing.
+The section becomes the release notes. The workflow stops if the section is missing or a line breaks the rules above.
 
 ### Tag and workflow
 
@@ -519,7 +521,8 @@ A second workflow can upload the same zip to Nexus Mods after the GitHub release
 - The repository secret `NEXUS_API_KEY` holds a Nexus Mods API key. Stop the run with a message when the secret is missing, and never run the job with debug logging on: the action writes the key into the debug log, and the logs of a public repository are open to anyone.
 - `mod_id` is the Unique Mod ID from the Files tab (Advanced): the game id shifted left 32 bits plus the mod number. HELLDIVERS (2015) is game 3552, so mods/48 is 3552 << 32 | 48 = 15255723835440.
 - `file_id` is the File ID under API of the existing file. Each upload becomes a new version of that file, and `archive_existing_version: true` moves the old version to the archive.
-- Send no changelog to Nexus: the release notes live on GitHub. Read the current title and description of the file from the Nexus API and send them back unchanged, so text edited on the page stays.
+- Send the changelog section to the Nexus changelog, one entry per change line (`POST https://api.nexusmods.com/v3/mods/<Unique Mod ID>/changelogs` with `{"version", "changelog"}` and the `apikey` header). Each call adds one entry, so the text of the whole section in one call shows as a single entry. Calls only append: read what the version already has (`GET /v1/games/helldivers/mods/<number>/changelogs.json`) and skip those lines, so a second run adds nothing. A page that carries two mods gets the name of the mod before each entry.
+- Read the current title and description of the file from the Nexus API and send them back unchanged, so text edited on the page stays.
 - A page that carries more than one mod, such as the Enhanced Visuals page that also holds Upscaled Textures, should keep `update_mod_version: false`: the version of the page then stays as set by hand.
 - Skip prereleases, and allow a run by hand for a tag that's already out.
 
