@@ -10,6 +10,8 @@
 #   jobs:
 #     release:
 #       uses: Alomare/HD1-LuaModdingSkill/.github/workflows/mod-release.yml@main
+#       secrets:
+#         store_token: ${{ secrets.STORE_INDEX_TOKEN }}
 #
 # What it does, in the repository that called it, at the tag that was pushed:
 #   1. The tag has to match "version" in obsidian.json.
@@ -21,6 +23,12 @@
 #   4. `check`, when given, runs as one more command (a generated file that must be current, a lint).
 #   5. The zip is `git archive` of the tag under one <id>/ folder, so export-ignore in .gitattributes
 #      decides what a player gets. It is published as <id>-<version>.zip, the name Obsidian looks for.
+#   6. The Store Index (Alomare/ObsidianStoreIndex) rebuilds at once, so the Store in Obsidian shows
+#      the release without waiting for the hourly schedule, which GitHub delays or skips under load.
+#      This needs `store_token`: a fine-grained token with Actions read and write on that repository
+#      only, kept as the secret STORE_INDEX_TOKEN of the mod repository. Without it the release still
+#      goes out, with a notice, and the schedule picks it up later. A failure here never fails the
+#      release.
 #
 # A tag with a suffix (v1.2.0-beta.1) makes a prerelease, which Obsidian does not offer.
 # Outputs `zip` and `version`, for a job that runs after it (an upload to Nexus Mods).
@@ -28,6 +36,10 @@ name: Mod release
 
 on:
   workflow_call:
+    secrets:
+      store_token:
+        description: A token that may start workflows in Alomare/ObsidianStoreIndex
+        required: false
     inputs:
       check:
         description: One more command that has to pass before the release
@@ -115,3 +127,17 @@ jobs:
           [[ "$GITHUB_REF_NAME" == *-* ]] && pre="--prerelease"
           gh release create "$GITHUB_REF_NAME" "$zip" --title "$(jq -r .name.en obsidian.json) $VERSION" --notes-file notes.md $pre
           echo "zip=$zip" >> "$GITHUB_OUTPUT"
+
+      # A prerelease never shows in the Store; a -ci tag runs this to try the step itself.
+      - name: Rebuild the Store Index
+        if: ${{ !contains(github.ref_name, '-') || contains(github.ref_name, '-ci') }}
+        continue-on-error: true
+        env:
+          STORE_TOKEN: ${{ secrets.store_token }}
+        run: |
+          if [ -z "$STORE_TOKEN" ]; then
+            echo "::notice::No STORE_INDEX_TOKEN in this repository: the Store Index picks the release up at the next scheduled build."
+            exit 0
+          fi
+          GH_TOKEN="$STORE_TOKEN" gh workflow run build.yml -R Alomare/ObsidianStoreIndex
+          echo "The Store Index is rebuilding."
