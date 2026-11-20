@@ -17,9 +17,12 @@ It covers the mod package and manifest, the game scripts and what to hook, multi
 | `references/ui.md` | HUD and menu drawing, shipped images and fonts, world-space drawing |
 | `references/rendering.md` | Shading values, the render config, shader swaps, textures, lights |
 | `references/game-modes.md` | Expansions and modes: mission seeds, maps, campaign safety, lobby sync |
+| `references/memory-bridge.md` | Running Lua in the game while it runs, with the Memory Bridge of Obsidian API |
 | `references/live-testing.md` | Scripted in-game runs, probes and tester checklists |
 | `references/orchestration.md` | Splitting a large mod across several agents |
 | `assets/mod-template/` | A mod skeleton to copy, with working offline tests |
+| `tools/bridge.py` | The Memory Bridge driver: sends Lua to the running game and prints the answer (Python 3.8+, no packages) |
+| `assets/bridge-scripts/` | Example scripts for the bridge: where things are, tracing calls, watching a value, frame times, screenshots |
 
 ## Install
 
@@ -56,7 +59,7 @@ The block at the top of `SKILL.md` between the `---` lines is metadata for Claud
 ## What you need
 
 - Obsidian Mod Manager, and the game on Steam.
-- LuaJIT 2.0 to run offline tests (the manager repository has a build script).
+- LuaJIT 2.0 to run offline tests (the manager repository has a build script). The Memory Bridge uses the one Obsidian installs.
 - A decompiled copy of the game scripts, for reading the game code. `references/engine.md` explains how to make one. Game files aren't redistributed here.
 
 ## License

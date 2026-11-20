@@ -71,7 +71,7 @@ Tools worth writing for yourself:
 | Bundle reader | Parse and decompress bundles, list entries by type. |
 | Name builder | Hash path-like strings from every bundle to name resources. |
 | Bytecode dumper and lifter | Steps 2 and 3 above. |
-| Bytecode assembler | Emit tiny stripped LuaJIT 2.0 chunks by hand, to test what the engine accepts (for example whether `loadstring` of source works, see section 5). |
+| Bytecode assembler | Emit tiny stripped LuaJIT 2.0 chunks by hand, to test what the engine accepts (see section 5). |
 | Patch builder | Write a `.patch_N` bundle with a replaced or added Lua resource, to test deploy behaviour. |
 | Bundle diff | Compare two builds: list changed, added and removed resources. Run it after each game update to see what a mod may break on. |
 | String cross-reference | Find which scripts contain a string or name, and check names against the executable. |
@@ -113,13 +113,13 @@ Notes:
 
 | Behaviour | Result |
 |---|---|
-| `loadstring(bytecode)` | Works. |
-| `loadstring(source)` | Silently returns nothing. The source parser is disabled in retail. |
+| `loadstring(source)`, `loadstring(bytecode)` | Return nothing, no message, in a mod (checked in the game with Obsidian API 1.56.0, 2026-11-20). |
 | `loadfile`, `load` | `nil`. |
-| `dofile`, `io`, `os` | Work. |
+| `dofile` | The resource loader of the engine: takes a resource name and adds `.lua` ("Resource not found: <name>.lua"). It doesn't read files from disk. |
+| `io`, `os` | Work. |
 | Language | LuaJIT 2.0, Lua 5.1 semantics. |
 
-Consequence: every script must be stripped LuaJIT 2.0 bytecode. The manager compiles mods at deploy. Do not try to `loadstring` text at runtime.
+Consequence: every script must be LuaJIT 2.0 bytecode in a deployed bundle. The manager compiles mods at deploy. New code can't be loaded at runtime; the Memory Bridge of Obsidian API runs code sent at runtime through an interpreter written in Lua (`memory-bridge.md`).
 
 Strict globals. `foundation_setup` requires `foundation/lua/util/strict` before the build info. `_G` has a metatable: `__newindex` allows new globals only from a main chunk or from C, and `__index` errors on a read of an undeclared global. Use `rawget(_G, "name")` and `rawset(_G, "name", v)` for globals that may not exist yet.
 

@@ -21,9 +21,11 @@ Read only what the task needs.
 | `references/ui.md` | HUD additions, redrawn menus, images and fonts a mod ships, drawing in the 3D world, the aim cursor, mouse and keys |
 | `references/rendering.md` | Graphics: shading values, renderer settings, the render config, shaders, textures, lights |
 | `references/game-modes.md` | A mode apart from the campaign: expansions, mission seeds, map generation, keeping the campaign untouched, pausing |
+| `references/memory-bridge.md` | Asking the running game a question: values, which unit is which, call order, a hook tried live. Before writing a probe or a test build |
 | `references/live-testing.md` | Scripted runs in the game: protecting the save, a command-driven test mod, probes, checklists for a tester |
 | `references/orchestration.md` | A large mod where splitting the work across several agents or models pays off |
 | `assets/mod-template/` | Starting a new mod: copy it and rename |
+| `tools/bridge.py`, `assets/bridge-scripts/` | The Memory Bridge driver and example scripts |
 | Obsidian API `REFERENCE.md` (github.com/Alomare/ObsidianAPI) | Before writing any hook: search it for the area first. It is long; search, don't read it whole |
 
 ## Workflow
@@ -38,9 +40,11 @@ Read only what the task needs.
 
 5. **Write testable code.** Put decisions in pure functions (which slot, which code, when to sync) and keep the hooks thin. Test the pure parts offline with LuaJIT 2.0 and fakes of the game tables. Run the API test suite too when the API changed.
 
-6. **Deploy and hand over to an in-game test.** Offline tests can't settle network timing, HUD drawing or engine behaviour. Deploy to the library the player uses, then give the tester a short list of what to look at, most likely failures first. Local co-op (a second controller) tests most multiplayer paths on one machine. For scripted runs and probes, see `references/live-testing.md`.
+6. **Ask the running game.** With the Memory Bridge of Obsidian API on, `python tools/bridge.py "<lua>"` answers data questions in seconds: what a function gets and returns, which unit is which, what a hook would see. Settle those before writing a test build (`references/memory-bridge.md`).
 
-7. **Release.** Bump the version, add the CHANGELOG section, tag `v<version>`; the release workflow builds the zip. When a mod needs a new API, release the API first and make the mod require that version.
+7. **Deploy and hand over to an in-game test.** Offline tests can't settle network timing, HUD drawing or engine behaviour. Deploy to the library the player uses, then give the tester a short list of what to look at, most likely failures first. Local co-op (a second controller) tests most multiplayer paths on one machine. For scripted runs and probes, see `references/live-testing.md`.
+
+8. **Release.** Bump the version, add the CHANGELOG section, tag `v<version>`; the release workflow builds the zip. When a mod needs a new API, release the API first and make the mod require that version.
 
 ## Rules that save the most time
 

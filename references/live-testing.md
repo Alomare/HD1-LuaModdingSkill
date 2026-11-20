@@ -1,6 +1,6 @@
 # Testing in the running game
 
-Offline tests settle logic. Hooks, frame order, drawing and engine behaviour need the game. This is the harness pattern used for Heroic UI, Helldivers Arcade, Enhanced Visuals and a backend probe, and the checklist habits that came with it. Build the harness once per project, outside git (an `internal/testing` folder), and keep it out of the release.
+Offline tests settle logic. Hooks, frame order, drawing and engine behaviour need the game. For a question about data (a value, an argument, which unit is which, the order of calls), ask the running game through the Memory Bridge first (`memory-bridge.md`): no build, no restart. This is the harness pattern used for Heroic UI, Helldivers Arcade, Enhanced Visuals and a backend probe, and the checklist habits that came with it. Build the harness once per project, outside git (an `internal/testing` folder), and keep it out of the release.
 
 ## Contents
 
@@ -20,7 +20,7 @@ Offline tests settle logic. Hooks, frame order, drawing and engine behaviour nee
 
 ## 2. A test mod that takes commands
 
-Lua in the game can't parse source at runtime (`loadstring` of text returns nothing), so a test can't send code. Instead:
+The game loads no new code at runtime (`loadstring` of source or bytecode answers nothing), so a test mod can't take code by itself. The Memory Bridge of Obsidian API gets around that with an interpreter written in Lua (`memory-bridge.md`): use it for questions, and a test mod for scripted runs that drive the game. A test mod:
 
 - The test mod reads a command file in the logs folder each frame and runs named commands: open a menu, win, start a mission, set god mode, run a probe.
 - The mod is inert unless a config file written by the run script exists, and the script deletes it at the end. A forgotten test mod then does nothing.
