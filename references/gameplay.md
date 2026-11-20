@@ -32,6 +32,7 @@ Code that reads `CameraManager.position` keeps working the same way: `get_positi
 - The game adds camera shake to the top-down pose only.
 - `Mouse.axis(Mouse.axis_index("mouse"))` is the mouse movement in the frame. Photo Mode steers a free camera with it.
 - A longer view: `Camera.set_far_range`, the fog of the planet pushed out with `api.world.shading("fog_depth_range", "vector2", ...)`, and model detail through `api.world.detail` (`rendering.md` section 1). Past the level the game draws nothing; the sky fix is in `rendering.md` section 2.
+- Posing a Helldiver by hand (a spine bent toward the aim, as Eyes of Liberty does): turn the bones in a hook on `World.update_scene`, before it runs, for the world of the Helldiver. Bones turned in `StateGame.post_update` aren't drawn. Before that scene update the animation has set the local rotations for the frame, but `Unit.world_rotation` still answers the transforms of the last scene update: call `World.update_unit` on the unit before measuring a bone. Keep the rotation each bone had before the bend (`Quaternion.to_elements`), and put it back next frame where the bone still holds the bend, or the bend piles up (checked through the Memory Bridge, 2026-11-20).
 - Step aside when another camera takes over: `api.world.camera.taken()` (Photo Mode, the Trainer), a camera state other than `follow` or `follow_menu`, a dead player (the game then shows the squad from above), or a second local player on a controller, who shares the screen.
 
 ## 3. Weapon range and aim
