@@ -15,7 +15,7 @@
 #   1. The tag has to match "version" in obsidian.json.
 #   2. The release notes are the "## <version>" section of CHANGELOG.md. It stops when there is none,
 #      or when the text breaks the rules for public text: a list with one change per line, each
-#      starting "- New:", "- Changed:", "- Fixed:" or "- Removed:", no em or en dashes, no "its",
+#      starting "- New:", "- Changed:", "- Fixed:" or "- Removed:", no em or en dashes, no "its" or "own",
 #      no first or second person.
 #   3. The mod's tests run when it has tests/run.lua (LuaJIT).
 #   4. `check`, when given, runs as one more command (a generated file that must be current, a lint).
@@ -71,7 +71,7 @@ jobs:
           [ -s notes.md ] || { echo "::error::CHANGELOG.md has no section for $VERSION"; exit 1; }
           python3 - notes.md <<'PY'
           import re, sys
-          words = re.compile(r"\b(its|it's|i|me|my|we|our|us|you|your)\b", re.I)
+          words = re.compile(r"\b(its|it's|own|i|me|my|we|our|us|you|your)\b", re.I)
           kinds = re.compile(r"^- (New|Changed|Fixed|Removed): \S")
           problems = []
           entries = [s.strip() for s in open(sys.argv[1], encoding="utf-8").read().replace("\r", "").split("\n") if s.strip()]
